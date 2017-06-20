@@ -1,4 +1,5 @@
 *.pptx
+*.asv
 ResultsTable*.mat
 images/
 *.xlsx

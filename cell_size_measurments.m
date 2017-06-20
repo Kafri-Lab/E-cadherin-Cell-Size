@@ -1,109 +1,118 @@
 set(0,'DefaultFigureWindowStyle','docked')
-addpath '\\carbon.research.sickkids.ca\rkafri\Miriam\Matlab function library'
-inpath = '\\carbon.research.sickkids.ca\rkafri\DanielS\yuval_blind_measurements\images\';
+addpath 'functions';
 ResultsTable = table(); % initialize empty table
 
-img_ids = [1 2 3 4 5 6 7 8];
+%% Load image names
+imgs_path = 'images\4th set - Miri Stolovich-Rain - animal data from Dors to Kafris lab070617\tif zoo plot\';
+img_names = dir([imgs_path '*.tif']);
+img_names = {img_names.name}'; 
 
-for img_id=img_ids
-    progress = ['loop ' int2str(img_id)]
-    
+%% Map from keywords in filenames to pretty animal names
+name_map = containers.Map;
+name_map('tiger') = 'Tiger';
+name_map('fruit bat') = 'Fruit Bat';
+name_map('spalax') = 'Blind Mole Rat';
+name_map('wild bore') = 'Wild Bore';
+name_map('horse') = 'Horse';
+name_map('wolf') = 'Grey Wolf';
+name_map('giraf') = 'Giraffe';
+name_map('cow') = 'Cow';
+name_map('cat') = 'Cat';
+name_map('cotton') = 'Tamarin';
+name_map('kangaroo') = 'Kangaroo';
+name_map('peccary') = 'Peccary';
+name_map('pig') = 'Pig';
+name_map('dog') = 'Dog';
+name_map('oryx') = 'Arabian Oryx';
+name_map('nmr') = 'Naked Mole Rat';
+name_map('NMR') = 'Naked Mole Rat';
+name_map('prairie dog') = 'Prairie Dog';
+name_map('zvi') = 'Gazelle';
+name_map('RW') = 'Psammomys';
+name_map('black rat') = 'Black Rat';
+name_map('shrew') = 'Shrew';
+name_map('human') = 'Human';
+name_map('porcupine') = 'Porcupine';
+name_map('man pan') = 'Macaque';
+name_map('tamarin') = 'Tamarin';
+name_map('grey bat') = 'Grey Bat';
+name_map('mouse') = 'Mouse';
+
+count = 1;
+
+for n=1:size(img_names,1)
+    progress = {img_names{n} 'loop number' count 'out of' size(img_names,1)}  % progress indicator
+    count = count+1;
+
     %% LOAD IMAGES
-    img = imread([inpath int2str(img_id) '.tif']);
+    img = imread([imgs_path img_names{n}]);
     cyto = double(img(:,:,1));
     insulin = double(img(:,:,2));
-    nuc = double(img(:,:,3));
+    % nuc = double(img(:,:,3));
+    % figure; imshow(cyto,[])
     
-    %%
-    %% Insulin Section
-    %%
-    % figure('name',['insulin' int2str(img_id)],'NumberTitle', 'off');imshow(insulin,[])
+    % %%
+    % %% Nuclei Section (commented out for speed)
+    % %%
+    % % figure('name',['nuc' img_names{n}],'NumberTitle', 'off');imshow(nuc,[])
     
-    %% SMOOTH
-    ins_smooth = imgaussfilt(insulin,12);
-    % figure('name',['ins_smooth' int2str(img_id)],'NumberTitle', 'off');imshow(ins_smooth,[])
+    % %% SMOOTH
+    % nuc_smooth = imgaussfilt(nuc,7);
+    % % figure('name',['nuc_smooth' img_names{n}],'NumberTitle', 'off');imshow(nuc_smooth,[])
     
-    %% THRESHOLD
-    ins_thresh = ins_smooth>14;
-    % figure('name',['ins_thresh' int2str(img_id)],'NumberTitle', 'off');imshow(ins_thresh,[])
+    % %% Flat-field correction
+    % nuc_closed=imclose(nuc_smooth,strel('disk',15));
+    % nuc_opened=imopen(nuc_closed,strel('disk',150));
+    % nuc_corrected=nuc-nuc_opened;
+    % % figure('name',['corrected' img_names{n}],'NumberTitle', 'off');imshow(nuc_corrected,[])
     
-    %% FILL HOLES
-    ins_fill = imfill(ins_thresh, 'holes');
-    % figure('name',['ins_fill' int2str(img_id)],'NumberTitle', 'off');imshow(ins_fill,[])
+    % %% THRESHOLD
+    % nuc_thresh = nuc_corrected>15;
+    % % figure('name',['nuc_thresh' img_names{n}],'NumberTitle', 'off');imshow(nuc_thresh,[])
     
-    %% ERODE (compensate for aggresive threshold)
-    ins_erode = imerode(ins_fill, strel('disk',10));
-    % figure('name',['ins_erode' int2str(img_id)],'NumberTitle', 'off');imshow(ins_erode,[])
+    % %% OPEN
+    % nuc_open = imopen(nuc_thresh,strel('disk',3));
+    % % figure('name',['nuc_open' img_names{n}],'NumberTitle', 'off');imshow(nuc_open,[])
     
-    %% REMOVE SMALL OBJECTS
-    ins_open = bwareaopen(ins_erode, 500);
-    % figure('name',['ins_open' int2str(img_id)],'NumberTitle', 'off');imshow(ins_open,[])
+    % %% REMOVE SMALL OBJECTS
+    % nuc_open = bwareaopen(nuc_open, 100);
+    % % figure('name',['open' img_names{n}],'NumberTitle', 'off');imshow(nuc_open,[])
     
-    insulin_mask = ins_open;
+    % %% RENAME
+    % nuc_clean = nuc_open;
     
+    % %% FIND SEEDS
+    % nuc_seeds=imregionalmax(nuc_smooth);
+    % nuc_seeds=nuc_seeds&nuc_clean;
+    % nuc_seeds=imdilate(nuc_seeds,strel('sphere',7));
     
-    %%
-    %% Nuclei Section
-    %%
-    % figure('name',['nuc' int2str(img_id)],'NumberTitle', 'off');imshow(nuc,[])
+    % % Debug nuc seeds
+    % nuc_seed_overlay=(RGBOverlay(mat2gray(nuc+100),nuc_seeds));
+    % % figure('name',['nuc_seeds' img_names{n}],'NumberTitle', 'off');imshow(nuc_seed_overlay,[])
     
-    %% SMOOTH
-    nuc_smooth = imgaussfilt(nuc,7);
-    % figure('name',['nuc_smooth' int2str(img_id)],'NumberTitle', 'off');imshow(nuc_smooth,[])
+    % %% WATERSHED
+    % nuc_ws=watershed(imimposemin(imcomplement(nuc),nuc_seeds))&nuc_clean;
+    % labelled_nuc = bwlabel(nuc_ws);
     
-    %% Flat-field correction
-    nuc_closed=imclose(nuc_smooth,strel('disk',15));
-    nuc_opened=imopen(nuc_closed,strel('disk',150));
-    nuc_corrected=nuc-nuc_opened;
-    % figure('name',['corrected' int2str(img_id)],'NumberTitle', 'off');imshow(nuc_corrected,[])
-    
-    %% THRESHOLD
-    nuc_thresh = nuc_corrected>15;
-    % figure('name',['nuc_thresh' int2str(img_id)],'NumberTitle', 'off');imshow(nuc_thresh,[])
-    
-    %% OPEN
-    nuc_open = imopen(nuc_thresh,strel('disk',3));
-    % figure('name',['nuc_open' int2str(img_id)],'NumberTitle', 'off');imshow(nuc_open,[])
-    
-    %% REMOVE SMALL OBJECTS
-    nuc_open = bwareaopen(nuc_open, 100);
-    % figure('name',['open' int2str(img_id)],'NumberTitle', 'off');imshow(nuc_open,[])
-    
-    %% RENAME
-    nuc_clean = nuc_open;
-    
-    %% FIND SEEDS
-    nuc_seeds=imregionalmax(nuc_smooth);
-    nuc_seeds=nuc_seeds&nuc_clean;
-    nuc_seeds=imdilate(nuc_seeds,strel('sphere',7));
-    
-    % Debug nuc seeds
-    nuc_seed_overlay=(RGBOverlay(mat2gray(nuc+100),nuc_seeds));
-    % figure('name',['nuc_seeds' int2str(img_id)],'NumberTitle', 'off');imshow(nuc_seed_overlay,[])
-    
-    %% WATERSHED
-    nuc_ws=watershed(imimposemin(imcomplement(nuc),nuc_seeds))&nuc_clean;
-    labelled_nuc = bwlabel(nuc_ws);
-    
-    % Debug nuc
-    labelled_nuc_rgb = label2rgb(labelled_nuc,'jet', 'k', 'shuffle');
-    nuc_seeds_rgb = cat(3, nuc_seeds, zeros(size(nuc_seeds)), zeros(size(nuc_seeds)));
-    nuc_rgb = cat(3, nuc, nuc, nuc);
-    nuc_overlay = uint8(labelled_nuc_rgb./4) + uint8(nuc_rgb+50) + uint8(nuc_seeds_rgb)*128;
-    % figure;imshow(uint8(nuc_overlay),[]);
-    cyto_rgb = cat(3, cyto, cyto, cyto);
-    cyto_nuc_overlay = uint8(labelled_nuc_rgb./4) + uint8(cyto_rgb) + uint8(nuc_seeds_rgb)*128;
-    % figure;imshow(uint8(cyto_nuc_overlay),[]);
+    % % Debug nuc
+    % labelled_nuc_rgb = label2rgb(labelled_nuc,'jet', 'k', 'shuffle');
+    % nuc_seeds_rgb = cat(3, nuc_seeds, zeros(size(nuc_seeds)), zeros(size(nuc_seeds)));
+    % nuc_rgb = cat(3, nuc, nuc, nuc);
+    % nuc_overlay = uint8(labelled_nuc_rgb./4) + uint8(nuc_rgb+50) + uint8(nuc_seeds_rgb)*128;
+    % % figure;imshow(uint8(nuc_overlay),[]);
+    % cyto_rgb = cat(3, cyto, cyto, cyto);
+    % cyto_nuc_overlay = uint8(labelled_nuc_rgb./4) + uint8(cyto_rgb) + uint8(nuc_seeds_rgb)*128;
+    % % figure;imshow(uint8(cyto_nuc_overlay),[]);
     
     
     %%
     %% Cyto Section
     %%
-    % figure('name',['cyto' int2str(img_id)],'NumberTitle', 'off');imshow(cyto,[])
+    % figure('name',['cyto' img_names{n}],'NumberTitle', 'off');imshow(cyto,[])
     
     %% SMOOTH
     cyto_smooth = imgaussfilt(cyto,7);
-    % figure('name',['cyto_smooth' int2str(img_id)],'NumberTitle', 'off');imshow(cyto_smooth,[])
+    % figure('name',['cyto_smooth' img_names{n}],'NumberTitle', 'off');imshow(cyto_smooth,[])
     
     %% FIND SEEDS
     cyto_smooth=imhmin(cyto_smooth,2); % suppresing local minima
@@ -121,16 +130,16 @@ for img_id=img_ids
     % CLEAR BOARDER
     boarder_cleared = imclearborder(labelled_cyto);
     labelled_cyto = bwlabel(boarder_cleared);
-    % figure('name',['boarder_cleared' int2str(img_id)],'NumberTitle', 'off');imshow(labelled_cyto,[]); colormap(gca, 'jet');
+    % figure('name',['boarder_cleared' img_names{n}],'NumberTitle', 'off');imshow(labelled_cyto,[]); colormap(gca, 'jet');
     
     % Debug cyto
     labelled_cyto_rgb = label2rgb(labelled_cyto,'jet', 'k', 'shuffle');
     cyto_rgb = cat(3, cyto, cyto, cyto);
     cyto_seeds_rgb = cat(3, cyto_seeds, zeros(size(cyto_seeds)), zeros(size(cyto_seeds)));
     cyto_overlay = uint8(labelled_cyto_rgb./4) + uint8(cyto_rgb) + uint8(cyto_seeds_rgb)*128;
-    figure('name',['seedrgb' int2str(img_id)],'NumberTitle', 'off'); imshow(uint8(cyto_overlay),[]);
+    figure('name',['seedrgb' img_names{n}],'NumberTitle', 'off'); imshow(uint8(cyto_overlay),[]);
     
-    figure('name',['rgb' int2str(img_id)],'NumberTitle', 'off'); imshow(cyto,[]);
+    figure('name',['rgb' img_names{n}],'NumberTitle', 'off'); imshow(cyto,[]);
     hold on
     labelled_cyto_rgb = label2rgb(uint32(labelled_cyto), 'jet', [1 1 1], 'shuffle');
     himage = imshow(labelled_cyto_rgb,[]); himage.AlphaData = 0.3;
@@ -138,8 +147,9 @@ for img_id=img_ids
     %%
     %% ResultsTable Section
     %%
+    newResults = table();
     
-    % EDGE SCORE
+    % EDGE SCORE (for filtering segmentation errors)
     EdgeScore = [];
     for id=1:max(labelled_cyto(:))
         Per=bwperim(labelled_cyto==id);
@@ -147,24 +157,32 @@ for img_id=img_ids
         Tube=imdilate(Per,strel('disk',4))&~DilPer;
         EdgeScore(id)=mean(cyto(DilPer))/mean(cyto(Tube));
     end
+    newResults.EdgeScore = EdgeScore';
     
-    % MISC METRICS
+    % CYTO STATS
     cyto_stats=regionprops(labelled_cyto,'Area','Solidity','PixelIdxList');
-    nuc_stats=regionprops(labelled_cyto,nuc_corrected,'MeanIntensity');
+    newResults.CellSize = cat(1,cyto_stats.Area);
+    newResults.Solidity = cat(1,cyto_stats.Solidity);
+
+    % INSULIN STATS
     ins_stats=regionprops(labelled_cyto,insulin,'MeanIntensity');
-    stats_matrix=[cat(1,cyto_stats.Area)...
-        cat(1,cyto_stats.Solidity)...
-        cat(1,nuc_stats.MeanIntensity)...
-        cat(1,ins_stats.MeanIntensity)...
-        EdgeScore'];
-    
-    newResults=array2table(stats_matrix,'VariableNames',{'CellSize','Solidity','DAPI','Insulin','EdgeScore'});
-    
+    newResults.Insulin = cat(1,ins_stats.MeanIntensity);
+
+    % NUC STATS
+    % nuc_stats=regionprops(labelled_cyto,nuc_corrected,'MeanIntensity');
+    % newResults.DAPI = cat(1,nuc_stats.MeanIntensity);
+
+    % ANIMAL NAME COLUMN
+    labels = cell(1, length(cyto_stats));
+    animal_name = img_name_to_animal_name(img_names{n},name_map);
+    labels(:) = {animal_name};
+    newResults.Animal = labels';
+
     % IMAGE ID COLUMN
     labels = cell(1, length(cyto_stats));
-    labels(:) = {['Image ' int2str(img_id)]};
+    labels(:) = {img_names{n}};
     newResults.Image = labels';
-    
+
     % INDICES OF THE PIXELS FOR EACH CYTO
     PixelIdxList = cell(1, length(cyto_stats));
     for id=1:max(labelled_cyto(:))
@@ -183,12 +201,12 @@ save('ResultsTable.mat', 'ResultsTable');
 
 load('ResultsTable.mat');
 
-% Filter by solidity
-solidity_thresholds = [0.75 0.75 0.75 0.75 0.85 0.75 0.85 0.75];
+% Filter by solidity (differently for each image)
+solidity_threshold = 0.75;
 subsetTable = table();
-for img_id=img_ids
-    newSubset = ResultsTable(find(strcmp(ResultsTable.Image,{['Image ', int2str(img_id)]})),:);
-    subset_ids=newSubset.Solidity>solidity_thresholds(img_id);
+for n=1:size(img_names,1)
+    newSubset = ResultsTable(find(strcmp(ResultsTable.Animal,img_names{n})),:);
+    subset_ids=newSubset.Solidity>solidity_threshold;
     newSubset=newSubset(subset_ids,:);
     subsetTable = [subsetTable; newSubset];
 end
@@ -198,26 +216,25 @@ max_cell_size = 10000;
 subsetTable=subsetTable(subsetTable.CellSize<10000,:);
 
 % Filter by insulin
-insulin_thresholds = [12 4.6 40 14 33 31 9 9];
+insulin_threshold = 20;
 insulinTable = table();
-for img_id=img_ids
-    subset_ids=subsetTable.Insulin>insulin_thresholds(img_id);
+for n=1:size(img_names,1)
+    subset_ids=subsetTable.Insulin>insulin_threshold;
     newSubset=subsetTable(subset_ids,:);
-    newSubset = newSubset(find(strcmp(newSubset.Image,{['Image ', int2str(img_id)]})),:);
+    newSubset = newSubset(find(strcmp(newSubset.Image,img_names{n})),:);
     insulinTable = [insulinTable; newSubset];
 end
 
 
-% Filter by insulin
-insulin_thresholds = [12 4.6 40 14 33 31 9 9];
+% Filter by no insulin
+insulin_threshold = 20;
 noinsulinTable = table();
-for img_id=img_ids
-    subset_ids=subsetTable.Insulin<insulin_thresholds(img_id);
+for n=1:size(img_names,1)
+    subset_ids=subsetTable.Insulin<insulin_threshold;
     newSubset=subsetTable(subset_ids,:);
-    newSubset = newSubset(find(strcmp(newSubset.Image,{['Image ', int2str(img_id)]})),:);
+    newSubset = newSubset(find(strcmp(newSubset.Image,img_names{n})),:);
     noinsulinTable = [noinsulinTable; newSubset];
 end
-
 
 
 
@@ -225,11 +242,11 @@ end
 subsetTable = noinsulinTable;
 
 % RGB Segmentation Overlay
-for img_id=img_ids
-    img = imread([inpath int2str(img_id) '.tif']);
+for n=1:size(img_names,1)
+    img = imread([imgs_path img_names{n}]);
     cyto = double(img(:,:,1));
     labelled_by_size = zeros(size(cyto));
-    img_subsetTable = subsetTable(find(strcmp(subsetTable.Image,{['Image ', int2str(img_id)]})),:);
+    img_subsetTable = subsetTable(find(strcmp(subsetTable.Image,img_names{n})),:);
     for i=1:height(img_subsetTable)
         PixelIdxList = cell2mat(img_subsetTable{i,{'PixelIdxList'}});
         labelled_by_size(PixelIdxList)=img_subsetTable{i,'CellSize'};
@@ -239,7 +256,7 @@ for img_id=img_ids
     labelled_by_size_mod_colors(1)=min(subsetTable{:,'CellSize'});
     labelled_by_size_mod_colors(2)=7777;
     % Display RGB overlay
-    figure('name',['rgb' int2str(img_id)],'NumberTitle', 'off'); imshow(cyto,[]);
+    figure('name',['rgb' img_names{n}],'NumberTitle', 'off'); imshow(cyto,[]);
     hold on
     labelled_by_size_rgb = label2rgb(uint32(labelled_by_size_mod_colors), 'jet', [1 1 1]);
     himage = imshow(labelled_by_size_rgb,[]); himage.AlphaData = 0.3;
@@ -247,14 +264,14 @@ end
 
 % Anova table and boxplot
 figure
-[p,t,stats] = anova1(subsetTable.CellSize,subsetTable.Image);
+[p,t,stats] = anova1(subsetTable.CellSize,subsetTable.Animal);
 set(gca,'FontSize',19)
 
 
 % Bar chart
-Means = grpstats(subsetTable.CellSize,subsetTable.Image,'mean');
-Stds = grpstats(subsetTable.CellSize,subsetTable.Image,'std');
-Lngth = grpstats(subsetTable.CellSize,subsetTable.Image,'numel');
+Means = grpstats(subsetTable.CellSize,subsetTable.Animal,'mean');
+Stds = grpstats(subsetTable.CellSize,subsetTable.Animal,'std');
+Lngth = grpstats(subsetTable.CellSize,subsetTable.Animal,'numel');
 figure
 bar(Means)
 hold on
@@ -269,7 +286,7 @@ set(gca,'FontSize',19,'XTickLabel',{'Image 1', 'Image 2', 'Image 3', 'Image 4', 
 % VIOLIN PLOT
 addpath '\\carbon.research.sickkids.ca\rkafri\DanielS\Violinplot-Matlab'
 figure('Position', [100, 100, 900, 850]);
-vs = violinplot(subsetTable.CellSize, subsetTable.Image);
+vs = violinplot(subsetTable.CellSize, subsetTable.Animal);
 set(gca,'FontSize',19)
 ylabel('Cell Area (pixel count)', 'FontSize', 21);
 
