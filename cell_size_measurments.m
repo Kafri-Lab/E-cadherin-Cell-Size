@@ -39,7 +39,8 @@ name_map('grey bat') = 'Grey Bat';
 
 count = 1;
 
-for n=1:size(img_names,1)
+% for n=1:size(img_names,1)
+for n=1
     progress = {img_names{n} 'loop number' count 'out of' size(img_names,1)}  % progress indicator
     count = count+1;
 
@@ -49,7 +50,35 @@ for n=1:size(img_names,1)
     insulin = double(img(:,:,2));
     % nuc = double(img(:,:,3));
     % figure; imshow(cyto,[])
+
+    %%
+    %% Insulin Section
+    %%
+    % figure('name',['insulin' img_names{n}],'NumberTitle', 'off');imshow(insulin,[])
     
+    %% SMOOTH
+    ins_smooth = imgaussfilt(insulin,12);
+    % figure('name',['ins_smooth' img_names{n}],'NumberTitle', 'off');imshow(ins_smooth,[])
+    
+    %% THRESHOLD
+    thresh = calc_insulin_threshold(ins_smooth);
+    ins_thresh = ins_smooth>thresh;
+    % figure('name',['ins_thresh' img_names{n}],'NumberTitle', 'off');imshow(ins_thresh,[])
+    
+    %% FILL HOLES
+    ins_fill = imfill(ins_thresh, 'holes');
+    % figure('name',['ins_fill' img_names{n}],'NumberTitle', 'off');imshow(ins_fill,[])
+    
+    %% ERODE (compensate for aggresive threshold)
+    ins_erode = imerode(ins_fill, strel('disk',21));
+    % figure('name',['ins_erode' img_names{n}],'NumberTitle', 'off');imshow(ins_erode,[])
+    
+    %% REMOVE SMALL OBJECTS
+    ins_open = bwareaopen(ins_erode, 3000);
+    % figure('name',['ins_open' img_names{n}],'NumberTitle', 'off');imshow(ins_open,[])
+
+    insulin_mask = ins_open;
+
     %%
     %% Cyto Section
     %%
@@ -88,7 +117,7 @@ for n=1:size(img_names,1)
     % hold on
     % labelled_cyto_rgb = label2rgb(uint32(labelled_cyto), 'jet', [1 1 1], 'shuffle');
     % himage = imshow(labelled_cyto_rgb,[]); himage.AlphaData = 0.3;
-    
+
     %%
     %% ResultsTable Section
     %%
@@ -110,7 +139,7 @@ for n=1:size(img_names,1)
     newResults.Solidity = cat(1,cyto_stats.Solidity);
 
     % INSULIN STATS
-    ins_stats=regionprops(labelled_cyto,insulin,'MeanIntensity');
+    ins_stats=regionprops(labelled_cyto,insulin_mask.*7777,'MeanIntensity'); % the .*7777 is a temporary solution to set cells as their beta or not beta, a continuous solution should be implemented when time permits
     newResults.Insulin = cat(1,ins_stats.MeanIntensity);
 
     % NUC STATS
@@ -146,9 +175,11 @@ save('ResultsTable.mat', 'ResultsTable');
 
 load('ResultsTable.mat');
 
+
+
 % Filter by solidity (differently for each image)
-solidity_threshold = 0.75;
 subsetTable = table();
+solidity_threshold = 0.7; 
 for n=1:size(img_names,1)
     newSubset = ResultsTable(find(strcmp(ResultsTable.Image,img_names{n})),:);
     subset_ids=newSubset.Solidity>solidity_threshold;
@@ -162,10 +193,8 @@ subsetTable=subsetTable(subsetTable.CellSize<10000,:);
 
 % Filter by insulin
 insulinTable = table();
+insulin_threshold = 777;
 for n=1:size(img_names,1)
-    img = imread([imgs_path img_names{n}]);
-    insulin_img = img(:,:,2);
-    insulin_threshold = calc_insulin_threshold(insulin_img);
     subset_ids=subsetTable.Insulin>insulin_threshold;
     newSubset=subsetTable(subset_ids,:);
     newSubset = newSubset(find(strcmp(newSubset.Image,img_names{n})),:);
@@ -175,10 +204,8 @@ end
 
 % Filter by no insulin
 noinsulinTable = table();
+insulin_threshold = 777;
 for n=1:size(img_names,1)
-    img = imread([imgs_path img_names{n}]);
-    insulin_img = img(:,:,2);
-    insulin_threshold = calc_insulin_threshold(insulin_img);
     subset_ids=subsetTable.Insulin<insulin_threshold;
     newSubset=subsetTable(subset_ids,:);
     newSubset = newSubset(find(strcmp(newSubset.Image,img_names{n})),:);
@@ -188,7 +215,7 @@ end
 
 
 %% GRAPHICS SECTION
-subsetTable = ResultsTable;
+subsetTable = noinsulinTable;
 
 % RGB Segmentation Overlay
 for n=1:size(img_names,1)
@@ -209,8 +236,8 @@ for n=1:size(img_names,1)
     hold on
     labelled_by_size_rgb = label2rgb(uint32(labelled_by_size_mod_colors), 'jet', [1 1 1]);
     himage = imshow(labelled_by_size_rgb,[]); himage.AlphaData = 0.3;
-    print(gcf,['all/rgb' img_names{n} '.png'],'-dpng','-r300');
-    close all
+    %print(gcf,['all/rgb' img_names{n} '.png'],'-dpng','-r300');
+    %close all
 end
 
 subsetTable = noinsulinTable;
