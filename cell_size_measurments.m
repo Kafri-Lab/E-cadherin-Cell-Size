@@ -50,60 +50,6 @@ for n=1:size(img_names,1)
     % nuc = double(img(:,:,3));
     % figure; imshow(cyto,[])
     
-    % %%
-    % %% Nuclei Section (commented out for speed)
-    % %%
-    % % figure('name',['nuc' img_names{n}],'NumberTitle', 'off');imshow(nuc,[])
-    
-    % %% SMOOTH
-    % nuc_smooth = imgaussfilt(nuc,7);
-    % % figure('name',['nuc_smooth' img_names{n}],'NumberTitle', 'off');imshow(nuc_smooth,[])
-    
-    % %% Flat-field correction
-    % nuc_closed=imclose(nuc_smooth,strel('disk',15));
-    % nuc_opened=imopen(nuc_closed,strel('disk',150));
-    % nuc_corrected=nuc-nuc_opened;
-    % % figure('name',['corrected' img_names{n}],'NumberTitle', 'off');imshow(nuc_corrected,[])
-    
-    % %% THRESHOLD
-    % nuc_thresh = nuc_corrected>15;
-    % % figure('name',['nuc_thresh' img_names{n}],'NumberTitle', 'off');imshow(nuc_thresh,[])
-    
-    % %% OPEN
-    % nuc_open = imopen(nuc_thresh,strel('disk',3));
-    % % figure('name',['nuc_open' img_names{n}],'NumberTitle', 'off');imshow(nuc_open,[])
-    
-    % %% REMOVE SMALL OBJECTS
-    % nuc_open = bwareaopen(nuc_open, 100);
-    % % figure('name',['open' img_names{n}],'NumberTitle', 'off');imshow(nuc_open,[])
-    
-    % %% RENAME
-    % nuc_clean = nuc_open;
-    
-    % %% FIND SEEDS
-    % nuc_seeds=imregionalmax(nuc_smooth);
-    % nuc_seeds=nuc_seeds&nuc_clean;
-    % nuc_seeds=imdilate(nuc_seeds,strel('sphere',7));
-    
-    % % Debug nuc seeds
-    % nuc_seed_overlay=(RGBOverlay(mat2gray(nuc+100),nuc_seeds));
-    % % figure('name',['nuc_seeds' img_names{n}],'NumberTitle', 'off');imshow(nuc_seed_overlay,[])
-    
-    % %% WATERSHED
-    % nuc_ws=watershed(imimposemin(imcomplement(nuc),nuc_seeds))&nuc_clean;
-    % labelled_nuc = bwlabel(nuc_ws);
-    
-    % % Debug nuc
-    % labelled_nuc_rgb = label2rgb(labelled_nuc,'jet', 'k', 'shuffle');
-    % nuc_seeds_rgb = cat(3, nuc_seeds, zeros(size(nuc_seeds)), zeros(size(nuc_seeds)));
-    % nuc_rgb = cat(3, nuc, nuc, nuc);
-    % nuc_overlay = uint8(labelled_nuc_rgb./4) + uint8(nuc_rgb+50) + uint8(nuc_seeds_rgb)*128;
-    % % figure;imshow(uint8(nuc_overlay),[]);
-    % cyto_rgb = cat(3, cyto, cyto, cyto);
-    % cyto_nuc_overlay = uint8(labelled_nuc_rgb./4) + uint8(cyto_rgb) + uint8(nuc_seeds_rgb)*128;
-    % % figure;imshow(uint8(cyto_nuc_overlay),[]);
-    
-    
     %%
     %% Cyto Section
     %%
