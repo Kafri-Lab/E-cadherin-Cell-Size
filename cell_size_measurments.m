@@ -18,7 +18,7 @@ name_map('wolf') = 'Grey Wolf';
 name_map('giraf') = 'Giraffe';
 name_map('cow') = 'Cow';
 name_map('cat') = 'Cat';
-name_map('cotton') = 'Tamarin';
+name_map('cotton') = 'Cotton Tamarin';
 name_map('kangaroo') = 'Kangaroo';
 name_map('peccary') = 'Peccary';
 name_map('pig') = 'Pig';
@@ -29,14 +29,13 @@ name_map('NMR') = 'Naked Mole Rat';
 name_map('prairie dog') = 'Prairie Dog';
 name_map('zvi') = 'Gazelle';
 name_map('RW') = 'Psammomys';
-name_map('black rat') = 'Black Rat';
+name_map('rat') = 'Black Rat';
+name_map('mouse') = 'Mouse';
 name_map('shrew') = 'Shrew';
 name_map('human') = 'Human';
 name_map('porcupine') = 'Porcupine';
-name_map('man pan') = 'Macaque';
-name_map('tamarin') = 'Tamarin';
+name_map('mon  pan') = 'Macaque';
 name_map('grey bat') = 'Grey Bat';
-name_map('mouse') = 'Mouse';
 
 count = 1;
 
@@ -132,17 +131,17 @@ for n=1:size(img_names,1)
     labelled_cyto = bwlabel(boarder_cleared);
     % figure('name',['boarder_cleared' img_names{n}],'NumberTitle', 'off');imshow(labelled_cyto,[]); colormap(gca, 'jet');
     
-    % Debug cyto
-    labelled_cyto_rgb = label2rgb(labelled_cyto,'jet', 'k', 'shuffle');
-    cyto_rgb = cat(3, cyto, cyto, cyto);
-    cyto_seeds_rgb = cat(3, cyto_seeds, zeros(size(cyto_seeds)), zeros(size(cyto_seeds)));
-    cyto_overlay = uint8(labelled_cyto_rgb./4) + uint8(cyto_rgb) + uint8(cyto_seeds_rgb)*128;
-    figure('name',['seedrgb' img_names{n}],'NumberTitle', 'off'); imshow(uint8(cyto_overlay),[]);
+    % % Debug cyto
+    % labelled_cyto_rgb = label2rgb(labelled_cyto,'jet', 'k', 'shuffle');
+    % cyto_rgb = cat(3, cyto, cyto, cyto);
+    % cyto_seeds_rgb = cat(3, cyto_seeds, zeros(size(cyto_seeds)), zeros(size(cyto_seeds)));
+    % cyto_overlay = uint8(labelled_cyto_rgb./4) + uint8(cyto_rgb) + uint8(cyto_seeds_rgb)*128;
+    % figure('name',['seedrgb' img_names{n}],'NumberTitle', 'off'); imshow(uint8(cyto_overlay),[]);
     
-    figure('name',['rgb' img_names{n}],'NumberTitle', 'off'); imshow(cyto,[]);
-    hold on
-    labelled_cyto_rgb = label2rgb(uint32(labelled_cyto), 'jet', [1 1 1], 'shuffle');
-    himage = imshow(labelled_cyto_rgb,[]); himage.AlphaData = 0.3;
+    % figure('name',['rgb' img_names{n}],'NumberTitle', 'off'); imshow(cyto,[]);
+    % hold on
+    % labelled_cyto_rgb = label2rgb(uint32(labelled_cyto), 'jet', [1 1 1], 'shuffle');
+    % himage = imshow(labelled_cyto_rgb,[]); himage.AlphaData = 0.3;
     
     %%
     %% ResultsTable Section
@@ -205,7 +204,7 @@ load('ResultsTable.mat');
 solidity_threshold = 0.75;
 subsetTable = table();
 for n=1:size(img_names,1)
-    newSubset = ResultsTable(find(strcmp(ResultsTable.Animal,img_names{n})),:);
+    newSubset = ResultsTable(find(strcmp(ResultsTable.Image,img_names{n})),:);
     subset_ids=newSubset.Solidity>solidity_threshold;
     newSubset=newSubset(subset_ids,:);
     subsetTable = [subsetTable; newSubset];
@@ -216,9 +215,11 @@ max_cell_size = 10000;
 subsetTable=subsetTable(subsetTable.CellSize<10000,:);
 
 % Filter by insulin
-insulin_threshold = 20;
 insulinTable = table();
 for n=1:size(img_names,1)
+    img = imread([imgs_path img_names{n}]);
+    insulin_img = img(:,:,2);
+    insulin_threshold = calc_insulin_threshold(insulin_img);
     subset_ids=subsetTable.Insulin>insulin_threshold;
     newSubset=subsetTable(subset_ids,:);
     newSubset = newSubset(find(strcmp(newSubset.Image,img_names{n})),:);
@@ -227,9 +228,11 @@ end
 
 
 % Filter by no insulin
-insulin_threshold = 20;
 noinsulinTable = table();
 for n=1:size(img_names,1)
+    img = imread([imgs_path img_names{n}]);
+    insulin_img = img(:,:,2);
+    insulin_threshold = calc_insulin_threshold(insulin_img);
     subset_ids=subsetTable.Insulin<insulin_threshold;
     newSubset=subsetTable(subset_ids,:);
     newSubset = newSubset(find(strcmp(newSubset.Image,img_names{n})),:);
@@ -239,6 +242,31 @@ end
 
 
 %% GRAPHICS SECTION
+subsetTable = ResultsTable;
+
+% RGB Segmentation Overlay
+for n=1:size(img_names,1)
+    img = imread([imgs_path img_names{n}]);
+    cyto = double(img(:,:,1));
+    labelled_by_size = zeros(size(cyto));
+    img_subsetTable = subsetTable(find(strcmp(subsetTable.Image,img_names{n})),:);
+    for i=1:height(img_subsetTable)
+        PixelIdxList = cell2mat(img_subsetTable{i,{'PixelIdxList'}});
+        labelled_by_size(PixelIdxList)=img_subsetTable{i,'CellSize'};
+    end
+    labelled_by_size(labelled_by_size>7777)=7777; % make colors more beautiful by putting an upper limit
+    labelled_by_size_mod_colors = labelled_by_size;
+    labelled_by_size_mod_colors(1)=min(subsetTable{:,'CellSize'});
+    labelled_by_size_mod_colors(2)=7777;
+    % Display RGB overlay
+    figure('name',['rgb' img_names{n}],'NumberTitle', 'off'); imshow(cyto,[]);
+    hold on
+    labelled_by_size_rgb = label2rgb(uint32(labelled_by_size_mod_colors), 'jet', [1 1 1]);
+    himage = imshow(labelled_by_size_rgb,[]); himage.AlphaData = 0.3;
+    print(gcf,['all/rgb' img_names{n} '.png'],'-dpng','-r300');
+    close all
+end
+
 subsetTable = noinsulinTable;
 
 % RGB Segmentation Overlay
@@ -260,12 +288,14 @@ for n=1:size(img_names,1)
     hold on
     labelled_by_size_rgb = label2rgb(uint32(labelled_by_size_mod_colors), 'jet', [1 1 1]);
     himage = imshow(labelled_by_size_rgb,[]); himage.AlphaData = 0.3;
+    print(gcf,['noins/rgb' img_names{n} '.png'],'-dpng','-r300');
+    close all
 end
 
 % Anova table and boxplot
 figure
 [p,t,stats] = anova1(subsetTable.CellSize,subsetTable.Animal);
-set(gca,'FontSize',19)
+set(gca,'FontSize',6)
 
 
 % Bar chart
@@ -280,14 +310,65 @@ ylabel('Cell Area (pixel count)', 'FontSize', 21);
 for i=1:length(Means)
     text(i+0.06,Means(i)+130,int2str(Means(i)),'FontSize',20);
 end
-set(gca,'FontSize',19,'XTickLabel',{'Image 1', 'Image 2', 'Image 3', 'Image 4', 'Image 5', 'Image 6', 'Image 7', 'Image 8'})
+%set(gca,'FontSize',19,'XTickLabel',{'Image 1', 'Image 2', 'Image 3', 'Image 4', 'Image 5', 'Image 6', 'Image 7', 'Image 8'})
 
 
-% VIOLIN PLOT
-addpath '\\carbon.research.sickkids.ca\rkafri\DanielS\Violinplot-Matlab'
-figure('Position', [100, 100, 900, 850]);
-vs = violinplot(subsetTable.CellSize, subsetTable.Animal);
-set(gca,'FontSize',19)
-ylabel('Cell Area (pixel count)', 'FontSize', 21);
+%% Load hand collected cell sizes to compare with
+animalsTable = load_animals_table_from_google_spreadsheet();
 
+%% Add cell sizes computed by computer vision (CV) in this file to the animals table
+animalsTable.AcinarCV = NaN(height(animalsTable),1);
+cv_animal_names = unique(subsetTable.Animal); % animals processed by cv
+for n=1:length(cv_animal_names)
+    animal_index = find(strcmp(animalsTable.ShortName,cv_animal_names{n}));
+    animalsTable.AcinarCV(animal_index) = Means(n);
+end
+
+
+%% Plot cell size calculated by hand vs computer vision
+animalsSubsetTable = animalsTable(~isnan(animalsTable.Acinar) & ...
+                          ~isnan(animalsTable.AcinarCV),:);
+CellSize = animalsSubsetTable.Acinar;
+CellSizeCV = animalsSubsetTable.AcinarCV;
+
+figure('Position', [400, 400, 300, 250])
+scatter(CellSizeCV,CellSize, 'ok')
+ylabel('Acinar Cell Volume Calculated by Computer Vision')
+xlabel('Acinar Cell Volume Calculated by Hand')
+
+
+%% Plot life span versus cell size Calculated by Hand
+animalsSubsetTable = animalsTable(~isnan(animalsTable.Acinar) & ...
+                            ~isnan(animalsTable.Lifespan),:);
+CellSize = animalsSubsetTable.Acinar;
+LifeSpan = animalsSubsetTable.Lifespan;
+
+[r p] = corr(CellSize, log(LifeSpan));
+figure('Position', [400, 400, 300, 250])
+semilogy(CellSize,LifeSpan,'ok')
+set(gca,'ytick',[0 3 6 12 25 50 100])
+[f,fresult]=fit(CellSize,log(LifeSpan),'poly1');
+hold on
+plot(CellSize,exp(f(CellSize)),'r')
+xlabel(['Acinar Cell Volume (um^3) Calculated by Hand'])
+ylabel('Life Span (yrs)')
+title(['R = ' num2str(r) ', p = ' num2str(p)])
+
+
+%% Plot life span versus cell size Calculated by Hand
+animalsSubsetTable = animalsTable(~isnan(animalsTable.AcinarCV) & ...
+                            ~isnan(animalsTable.Lifespan),:);
+CellSize = animalsSubsetTable.AcinarCV;
+LifeSpan = animalsSubsetTable.Lifespan;
+
+[r p] = corr(CellSize, log(LifeSpan));
+figure('Position', [400, 400, 300, 250])
+semilogy(CellSize,LifeSpan,'ok')
+set(gca,'ytick',[0 3 6 12 25 50 100])
+[f,fresult]=fit(CellSize,log(LifeSpan),'poly1');
+hold on
+plot(CellSize,exp(f(CellSize)),'r')
+xlabel(['Acinar Cell Volume (um^3) Calculated by Computer Vision'])
+ylabel('Life Span (yrs)')
+title(['R = ' num2str(r) ', p = ' num2str(p)])
 
