@@ -39,8 +39,8 @@ name_map('grey bat') = 'Grey Bat';
 
 count = 1;
 
-% for n=1:size(img_names,1)
-for n=1
+% for n=1
+for n=1:size(img_names,1)
     progress = {img_names{n} 'loop number' count 'out of' size(img_names,1)}  % progress indicator
     count = count+1;
 
@@ -177,47 +177,57 @@ load('ResultsTable.mat');
 
 
 
-% Filter by solidity (differently for each image)
+% Filter by solidity, insulin, prctile (keep up to 90 prctile)
+%TODO: Remove loop
 subsetTable = table();
-solidity_threshold = 0.7; 
+solidity_threshold = 0.7;
+insulin_threshold = 777;
 for n=1:size(img_names,1)
     newSubset = ResultsTable(find(strcmp(ResultsTable.Image,img_names{n})),:);
-    subset_ids=newSubset.Solidity>solidity_threshold;
-    newSubset=newSubset(subset_ids,:);
+    newSubset=newSubset(newSubset.Solidity>solidity_threshold,:);
+    newSubset=newSubset(newSubset.Insulin<insulin_threshold,:);
+    prctile_threshold = prctile(newSubset.CellSize,90);
+    newSubset=newSubset(newSubset.CellSize<prctile_threshold,:);
     subsetTable = [subsetTable; newSubset];
 end
+
+% Filter by edge score
+edge_threshold = 1.3;
+subsetTable=subsetTable(subsetTable.EdgeScore>edge_threshold,:);
 
 % Filter very big objects
 max_cell_size = 10000;
 subsetTable=subsetTable(subsetTable.CellSize<10000,:);
 
 % Filter by insulin
-insulinTable = table();
-insulin_threshold = 777;
-for n=1:size(img_names,1)
-    subset_ids=subsetTable.Insulin>insulin_threshold;
-    newSubset=subsetTable(subset_ids,:);
-    newSubset = newSubset(find(strcmp(newSubset.Image,img_names{n})),:);
-    insulinTable = [insulinTable; newSubset];
-end
+% % TODO: Remove loop
+% insulinTable = table();
+% insulin_threshold = 777;
+% for n=1:size(img_names,1)
+%     subset_ids=subsetTable.Insulin>insulin_threshold;
+%     newSubset=subsetTable(subset_ids,:);
+%     newSubset = newSubset(find(strcmp(newSubset.Image,img_names{n})),:);
+%     insulinTable = [insulinTable; newSubset];
+% end
 
 
-% Filter by no insulin
-noinsulinTable = table();
-insulin_threshold = 777;
-for n=1:size(img_names,1)
-    subset_ids=subsetTable.Insulin<insulin_threshold;
-    newSubset=subsetTable(subset_ids,:);
-    newSubset = newSubset(find(strcmp(newSubset.Image,img_names{n})),:);
-    noinsulinTable = [noinsulinTable; newSubset];
-end
+% % Filter by no insulin
+% %TODO: Remove loop
+% noinsulinTable = table();
+% insulin_threshold = 777;
+% for n=1:size(img_names,1)
+%     subset_ids=subsetTable.Insulin<insulin_threshold;
+%     newSubset=subsetTable(subset_ids,:);
+%     newSubset = newSubset(find(strcmp(newSubset.Image,img_names{n})),:);
+%     noinsulinTable = [noinsulinTable; newSubset];
+% end
 
 
 
 %% GRAPHICS SECTION
-subsetTable = noinsulinTable;
 
-% RGB Segmentation Overlay
+% RGB Segmentation Overlay (subsetTable)
+% for n=1
 for n=1:size(img_names,1)
     img = imread([imgs_path img_names{n}]);
     cyto = double(img(:,:,1));
@@ -227,41 +237,40 @@ for n=1:size(img_names,1)
         PixelIdxList = cell2mat(img_subsetTable{i,{'PixelIdxList'}});
         labelled_by_size(PixelIdxList)=img_subsetTable{i,'CellSize'};
     end
-    labelled_by_size(labelled_by_size>7777)=7777; % make colors more beautiful by putting an upper limit
+    labelled_by_size(labelled_by_size>4444)=4444; % make colors more beautiful by putting an upper limit
     labelled_by_size_mod_colors = labelled_by_size;
     labelled_by_size_mod_colors(1)=min(subsetTable{:,'CellSize'});
-    labelled_by_size_mod_colors(2)=7777;
+    labelled_by_size_mod_colors(2)=4444;
     % Display RGB overlay
-    figure('name',['rgb' img_names{n}],'NumberTitle', 'off'); imshow(cyto,[]);
+    figure('name',[img_names{n}],'NumberTitle', 'off'); imshow(cyto,[]);
     hold on
     labelled_by_size_rgb = label2rgb(uint32(labelled_by_size_mod_colors), 'jet', [1 1 1]);
     himage = imshow(labelled_by_size_rgb,[]); himage.AlphaData = 0.3;
-    %print(gcf,['all/rgb' img_names{n} '.png'],'-dpng','-r300');
-    %close all
+    print(gcf,['filtered/' img_names{n} '.png'],'-dpng','-r300');
+    close all
 end
 
-subsetTable = noinsulinTable;
-
-% RGB Segmentation Overlay
+% RGB Segmentation Overlay (ResultsTable)
+% for n=1
 for n=1:size(img_names,1)
     img = imread([imgs_path img_names{n}]);
     cyto = double(img(:,:,1));
     labelled_by_size = zeros(size(cyto));
-    img_subsetTable = subsetTable(find(strcmp(subsetTable.Image,img_names{n})),:);
-    for i=1:height(img_subsetTable)
-        PixelIdxList = cell2mat(img_subsetTable{i,{'PixelIdxList'}});
-        labelled_by_size(PixelIdxList)=img_subsetTable{i,'CellSize'};
+    img_ResultsTable = ResultsTable(find(strcmp(ResultsTable.Image,img_names{n})),:);
+    for i=1:height(img_ResultsTable)
+        PixelIdxList = cell2mat(img_ResultsTable{i,{'PixelIdxList'}});
+        labelled_by_size(PixelIdxList)=img_ResultsTable{i,'CellSize'};
     end
-    labelled_by_size(labelled_by_size>7777)=7777; % make colors more beautiful by putting an upper limit
+    labelled_by_size(labelled_by_size>4444)=4444; % make colors more beautiful by putting an upper limit
     labelled_by_size_mod_colors = labelled_by_size;
-    labelled_by_size_mod_colors(1)=min(subsetTable{:,'CellSize'});
-    labelled_by_size_mod_colors(2)=7777;
+    labelled_by_size_mod_colors(1)=min(ResultsTable{:,'CellSize'});
+    labelled_by_size_mod_colors(2)=4444;
     % Display RGB overlay
-    figure('name',['rgb' img_names{n}],'NumberTitle', 'off'); imshow(cyto,[]);
+    figure('name',[img_names{n}],'NumberTitle', 'off'); imshow(cyto,[]);
     hold on
     labelled_by_size_rgb = label2rgb(uint32(labelled_by_size_mod_colors), 'jet', [1 1 1]);
     himage = imshow(labelled_by_size_rgb,[]); himage.AlphaData = 0.3;
-    print(gcf,['noins/rgb' img_names{n} '.png'],'-dpng','-r300');
+    print(gcf,['all/' img_names{n} '.png'],'-dpng','-r300');
     close all
 end
 
