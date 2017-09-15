@@ -11,6 +11,7 @@ img_names = {img_names.name}';
 
 %% Map from keywords in filenames to pretty animal names
 name_map = containers.Map;
+
 name_map('tiger') = 'Tiger';
 name_map('fruit bat') = 'Fruit Bat';
 name_map('spalax') = 'Blind Mole Rat';
