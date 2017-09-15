@@ -3,8 +3,8 @@ addpath(genpath('functions'));
 
 ResultsTable = table(); % initialize empty table
 
-%% Load image names
-imgs_path = 'D:\SickKids\YuvalDor\zoo images\images\4th set - Miri Stolovich-Rain - animal data from Dors to Kafris lab070617\tif zoo plot\';
+%% Load image names 
+imgs_path = 'R:\DanielS\Images\zoo_animal\hepatocyte_images';
 %imgs_path = 'Z:\DanielS\zoo_animal_images\4th set - Miri Stolovich-Rain - animal data from Dors to Kafris lab070617\tif zoo plot\';
 img_names = dir([imgs_path '*.tif']);
 img_names = {img_names.name}'; 
