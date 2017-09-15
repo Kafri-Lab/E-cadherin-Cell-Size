@@ -11,5 +11,6 @@ function segmentation_color_overlay(cyto, cyto_seeds, labelled_cyto)
     figure('name','rgb','NumberTitle', 'off'); imshow(cyto,[]);
     hold on
     labelled_cyto_rgb = label2rgb(uint32(labelled_cyto), 'jet', [1 1 1], 'shuffle');
-    himage = imshow(labelled_cyto_rgb,[]); himage.AlphaData = 0.3;
+    himage = imshow(labelled_cyto_rgb,[]);
+    himage.AlphaData = 0.3;
 end
