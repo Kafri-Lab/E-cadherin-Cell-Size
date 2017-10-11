@@ -4,7 +4,7 @@ addpath(genpath('functions'));
 ResultsTable = table(); % initialize empty table
 
 %% Load image names 
-imgs_path = '\\carbon.research.sickkids.ca\rkafri\DanielS\Images\zoo_animal\hepatocyte_images\FIRST TRY IMAGE SET\';
+imgs_path = '\\carbon.research.sickkids.ca\rkafri\DanielS\Images\zoo_animal\hepatocyte_images\Second Image Set\';
 %imgs_path = 'Z:\DanielS\zoo_animal_images\4th set - Miri Stolovich-Rain - animal data from Dors to Kafris lab070617\tif zoo plot\';
 img_names = dir([imgs_path '*.tif']);
 img_names = {img_names.name}'; 
@@ -35,7 +35,8 @@ name_map('psamon') = 'Psammomys';
 name_map('rat') = 'Black Rat';
 name_map('mouse') = 'Mouse';
 name_map('mou ') = 'Mouse';
-name_map('shrew') = 'Shrew';
+name_map('shrew liv') = 'Shrew';
+name_map('shrew 11') = 'Shrew';
 name_map('human') = 'Human';
 name_map('porcupine') = 'Porcupine';
 name_map('dorban') = 'Porcupine';
@@ -45,6 +46,7 @@ name_map('grey bat') = 'Grey Bat';
 % IMAGE SEGMENTATION SECTION
 % for n=1
 for n=1:size(img_names,1)
+ 
  %for n=[24 130]
     progress = {img_names{n} 'loop number' n 'out of' size(img_names,1)}  % progress indicator
     
@@ -59,7 +61,58 @@ for n=1:size(img_names,1)
     
  
    
-    %%
+    %% Nuc Segment
+    
+    % Correct background brightness
+    nuc_closed=imclose(nuc,strel('disk',20)); %imshow(nuc_closed,[]);
+    nuc_opened=imopen(nuc_closed,strel('disk',100)); %imshow(nuc_opened,[]);
+    nuc_corrected=nuc-nuc_opened; %imshow(nuc_corrected,[]);
+    % Smooth
+    nuc_smooth = imgaussfilt(nuc_corrected,7);
+    % Threshold
+    nuc_thresh = nuc_smooth>5; figure; %imshow(nuc_thresh,[]);
+    % Remove single isolated pixels
+    nuc_open = imopen(nuc_thresh,strel('disk',1)); figure; %imshow(nuc_open,[]);
+    % Connect remaining pixels
+    nuc_close = imclose(nuc_open,strel('disk',6)); figure; %imshow(nuc_close,[]);
+    % Remove smallish groups of pixels
+    nuc_open = imopen(nuc_close,strel('disk',5)); figure; %imshow(nuc_open,[]);
+    nuc_mask = nuc_open;
+
+    % Find seeds
+    nuc_smooth2 = imgaussfilt(nuc_smooth,5);  %imshow(nuc_smooth2,[]);
+    nuc_seeds = imregionalmax(nuc_smooth2);
+    nuc_seeds = nuc_seeds & nuc_mask;
+    
+    % Debug nuc seeds
+    [xm,ym]=find(nuc_seeds);
+    figure; %imshow(nuc_corrected,[prctile(nuc_corrected(:),0) prctile(nuc_corrected(:),95)]); hold on; plot(ym,xm,'or','markersize',2,'markerfacecolor','r')
+    
+    % Watershed Nuc    
+    nuc_min = imimposemin(-nuc_smooth2,nuc_seeds);  %imshow(nuc_min,[]);
+    nuc_ws=watershed(nuc_min);
+    nuc_ws = nuc_ws & nuc_mask;
+    labelled_nuc=bwlabel(nuc_ws);  %imshow(labelled_nuc,[]);
+
+    labelled_nuc = JoinCutNuclei(labelled_nuc); figure; imshow(labelled_nuc,[]);
+    
+    % NUC STATS
+    nuc_stats=regionprops(labelled_nuc,'Area');
+    nuc_size = cat(1,nuc_stats.Area);
+    
+    % Remove Nucs that are too big or too small
+    labelled_nuc2 = labelled_nuc;
+    min_nuc_size = 0;
+    max_nuc_size = 5000;
+    too_small_or_big = min_nuc_size>nuc_size | nuc_size >max_nuc_size;
+    ids = find(too_small_or_big);
+    labelled_nuc2(ismember(labelled_nuc2,ids))=0; imshow(labelled_nuc2,[]);
+    labelled_nuc = labelled_nuc2;
+    
+    % Debug Nuc
+    segmentation_color_overlay(nuc_corrected, nuc_seeds, labelled_nuc, labelled_nuc);
+
+
     %% Cyto Section
     %%
     % figure('name',['cyto' img_names{n}],'NumberTitle', 'off');imshow(cyto,[])
@@ -88,8 +141,8 @@ for n=1:size(img_names,1)
     labelled_cyto = bwlabel(boarder_cleared);
     % figure('name',['boarder_cleared' img_names{n}],'NumberTitle', 'off');imshow(labelled_cyto,[]); colormap(gca, 'jet');
     
-    % Debug cyto
-    % segmentation_color_overlay(cyto, cyto_seeds, labelled_cyto);
+    %Debug cyto
+    segmentation_color_overlay(cyto, cyto_seeds, labelled_cyto, labelled_nuc);
 
     %%
     %% ResultsTable Section
@@ -148,6 +201,18 @@ for n=1:size(img_names,1)
     end
     newResults.PixelIdxList = PixelIdxList';
     
+    % Count Number of Nucs in Cell
+    NucCount = zeros(length(cyto_stats),1);
+    for cell_id=1:max(labelled_cyto(:))
+        NucCount(cell_id) = sum(unique(labelled_nuc(labelled_cyto==cell_id))>0)
+        %% OR, the above expanded with very descriptive variable names
+        % single_cell = labelled_cyto==cell_id;
+        % nuc_pixels_in_single_cell = labelled_nuc(single_cell);
+        % unique_pixels_values_in_single_cell_nuc = unique(nuc_pixels_in_single_cell);
+        % non_zero_unique_pixels_values_in_single_cell_nuc = unique_pixels_values_in_single_cell_nuc>0;
+        % total_non_zero_unique_pixels_values_in_single_cell_nuc = sum(non_zero_unique_pixels_values_in_single_cell_nuc);
+    end
+    newResults.NucCount = NucCount;
     % STORE RESULTS
     ResultsTable = [ResultsTable; newResults];
 end
@@ -205,9 +270,9 @@ for n=1:size(img_names,1)
     subsetTable = [subsetTable; imageSubset];
 end
 
-% Filter very big objects
-%max_cell_size = 4000;
-%subsetTable=subsetTable(subsetTable.CellSize<4000,:);
+%Filter very big objects
+max_cell_size = 6000;
+subsetTable=subsetTable(subsetTable.CellSize<6000,:);
 
 % Filter by insulin
 % % TODO: Remove loop

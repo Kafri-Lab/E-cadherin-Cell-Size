@@ -5,3 +5,4 @@ images/
 *.xlsx
 daniel/
 old/
+segmentation_errors_filtered/
