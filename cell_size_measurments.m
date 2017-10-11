@@ -4,14 +4,13 @@ addpath(genpath('functions'));
 ResultsTable = table(); % initialize empty table
 
 %% Load image names 
-imgs_path = 'R:\DanielS\Images\zoo_animal\hepatocyte_images';
+imgs_path = '\\carbon.research.sickkids.ca\rkafri\DanielS\Images\zoo_animal\hepatocyte_images\FIRST TRY IMAGE SET\';
 %imgs_path = 'Z:\DanielS\zoo_animal_images\4th set - Miri Stolovich-Rain - animal data from Dors to Kafris lab070617\tif zoo plot\';
 img_names = dir([imgs_path '*.tif']);
 img_names = {img_names.name}'; 
 
 %% Map from keywords in filenames to pretty animal names
 name_map = containers.Map;
-
 name_map('tiger') = 'Tiger';
 name_map('fruit bat') = 'Fruit Bat';
 name_map('spalax') = 'Blind Mole Rat';
@@ -25,22 +24,25 @@ name_map('cotton') = 'Cotton Tamarin';
 name_map('kangaroo') = 'Kangaroo';
 name_map('peccary') = 'Peccary';
 name_map('pig') = 'Pig';
-name_map('dog') = 'Dog';
 name_map('oryx') = 'Arabian Oryx';
 name_map('nmr') = 'Naked Mole Rat';
 name_map('NMR') = 'Naked Mole Rat';
 name_map('prairie dog') = 'Prairie Dog';
+% name_map('dog') = 'Dog'; % non-unique name (see prairie dog). So we can't use this as is, need to fix
 name_map('zvi') = 'Gazelle';
 name_map('RW') = 'Psammomys';
+name_map('psamon') = 'Psammomys';
 name_map('rat') = 'Black Rat';
 name_map('mouse') = 'Mouse';
+name_map('mou ') = 'Mouse';
 name_map('shrew') = 'Shrew';
 name_map('human') = 'Human';
 name_map('porcupine') = 'Porcupine';
-name_map('mon  pan') = 'Macaque';
+name_map('dorban') = 'Porcupine';
+name_map('mon  ') = 'Macaque';
 name_map('grey bat') = 'Grey Bat';
 
-
+% IMAGE SEGMENTATION SECTION
 % for n=1
 for n=1:size(img_names,1)
  %for n=[24 130]
@@ -50,45 +52,13 @@ for n=1:size(img_names,1)
     img = imread([imgs_path img_names{n}]);
     cyto = double(img(:,:,1));
     insulin = double(img(:,:,2));
-    % nuc = double(img(:,:,3));
+    nuc = double(img(:,:,3));
     % figure; imshow(cyto,[])
-
-    %%
-    %% Insulin Section
-    %%
-    % figure('name',['insulin' img_names{n}],'NumberTitle', 'off');imshow(insulin,[])
+    % figure; imshow(insulin,[])
+    % figure; imshow(nuc,[])
     
-    %% SMOOTH
-    ins_smooth = imgaussfilt(insulin,12);
-    % figure('name',['ins_smooth' img_names{n}],'NumberTitle', 'off');imshow(ins_smooth,[])
-    
-    %% THRESHOLD
-    thresh = calc_insulin_threshold(ins_smooth);
-    ins_thresh = ins_smooth>thresh;
-    % figure('name',['ins_thresh' img_names{n}],'NumberTitle', 'off');imshow(ins_thresh,[])
-    
-    % If auto threshold found more than half of pixels as insulin, then the threshold failed, there shouldn't be that much insulin and it's probably the result of a lot of ambient insulin, so set all area as having no insulin. 
-    if sum(sum(ins_thresh==1)) > sum(sum(ins_thresh==0))
-        ins_thresh = zeros(size(ins_thresh));
-    end
-  
-    %% FILL HOLES
-    ins_fill = imfill(ins_thresh, 'holes');
-    % figure('name',['ins_fill' img_names{n}],'NumberTitle', 'off');imshow(ins_fill,[])
-    
-
-    %% ERODE (compensate for aggresive threshold)
-    ins_erode = imerode(ins_fill, strel('disk',21));
-    % figure('name',['ins_erode' img_names{n}],'NumberTitle', 'off');imshow(ins_erode,[])
-    
-    %% REMOVE SMALL OBJECTS
-    ins_open = bwareaopen(ins_erode, 3000);
-    % figure('name',['ins_open' img_names{n}],'NumberTitle', 'off');imshow(ins_open,[])
-
-    
-    
-    insulin_mask = ins_open;
-
+ 
+   
     %%
     %% Cyto Section
     %%
@@ -96,11 +66,13 @@ for n=1:size(img_names,1)
     
     %% SMOOTH
     cyto_smooth = imgaussfilt(cyto,7);
-    % figure('name',['cyto_smooth' img_names{n}],'NumberTitle', 'off');imshow(cyto_smooth,[])
+    %figure('name',['cyto_smooth' img_names{n}],'NumberTitle', 'off');imshow(cyto_smooth,[])
     
     %% FIND SEEDS
     cyto_smooth=imhmin(cyto_smooth,2); % suppresing local minima
+    % figure('name',['imhmin' img_names{n}],'NumberTitle', 'off');imshow(cyto_smooth,[])
     [cyto_seeds]=imregionalmin(cyto_smooth);
+ 
     
     % Debug cyto seeds
     [xm,ym]=find(cyto_seeds);
@@ -154,10 +126,6 @@ for n=1:size(img_names,1)
     % Debug Solidity Filter
     % display_solidity_filter_color_overlay(newResults.Solidity, cyto, cyto_seeds, labelled_cyto, 0.8);
 
-    % INSULIN STATS
-    ins_stats=regionprops(labelled_cyto,insulin_mask.*7777,'MeanIntensity'); % the .*7777 is a temporary solution to set cells as their beta or not beta, a continuous solution should be implemented when time permits
-    newResults.Insulin = cat(1,ins_stats.MeanIntensity);
-
     % NUC STATS
     % nuc_stats=regionprops(labelled_cyto,nuc_corrected,'MeanIntensity');
     % newResults.DAPI = cat(1,nuc_stats.MeanIntensity);
@@ -193,52 +161,48 @@ load('ResultsTable.mat');
 
 
 
-% Filter by solidity, insulin, edgescore, outliers
-%TODO: Remove loop
+% Filter by solidity, edgescore, outliers
 subsetTable = table();
-insulin_threshold = 777;
-%for n=1:size(img_names,1)
-for n=114 % black rat - rat 4m-304.tif
-    newSubset = ResultsTable(find(strcmp(ResultsTable.Image,img_names{n})),:);
-    if height(newSubset) == 0
+for n=1:size(img_names,1)
+%for n=114 % black rat - rat 4m-304.tif
+    imageSubset = ResultsTable(find(strcmp(ResultsTable.Image,img_names{n})),:);
+    if height(imageSubset) == 0
         warning('Warning: no cells found in image. Skipping')
         continue
     end
-    newSubset=newSubset(newSubset.Insulin>insulin_threshold,:);
-    if height(newSubset) == 0
-        warning('Warning: insulin threshold removed all cells. Skipping')
-        continue
-    end
-    
+
     % Calc Automatic Solidity Threshold (the largest peak in ksdenisty)
-    [f,xi] = ksdensity(newSubset.Solidity);
+    [f,xi] = ksdensity(imageSubset.Solidity);
     [pks, peak_xlocs] = findpeaks(f,'SortStr','descend','NPeaks',1); % find the largest peak
     spacing = xi(2)-xi(1); % Store spacing between sliding window jumps of ksdensity
     peak_xlocs = ((peak_xlocs)*spacing)+min(xi)-spacing; % Set correct range of x values.
     solidity_threshold = peak_xlocs(1); % Use the first (largest) peak location (on x-axis) as the edge score threshold
-    solidity_threshold = solidity_threshold - std(newSubset.Solidity)/3;
+    solidity_threshold = solidity_threshold - std(imageSubset.Solidity)/3; % adjust threshold by 1/3 a std dev from the mean
     
     % Calc Automatic Edge Score Threshold (the largest peak in ksdenisty)
-    [f,xi] = ksdensity(newSubset.EdgeScore);
+    [f,xi] = ksdensity(imageSubset.EdgeScore);
     [pks, peak_xlocs] = findpeaks(f,'SortStr','descend','NPeaks',1); % find the largest peak
     spacing = xi(2)-xi(1); % Store spacing between sliding window jumps of ksdensity
     peak_xlocs = ((peak_xlocs)*spacing)+min(xi)-spacing; % Set correct range of x values.
     edge_threshold = peak_xlocs(1); % Use the first (largest) peak location (on x-axis) as the edge score threshold
     
 
-    newSubset=newSubset(newSubset.Solidity>solidity_threshold,:);
-    newSubset=newSubset(newSubset.EdgeScore<edge_threshold,:);
+    imageSubset=imageSubset(imageSubset.Solidity>solidity_threshold,:);
+    imageSubset=imageSubset(imageSubset.EdgeScore<edge_threshold,:);
     
     % prctile_threshold = prctile(newSubset.CellSize,95);
     %newSubset=newSubset(newSubset.CellSize<prctile_threshold,:);
     % prctile_threshold = prctile(newSubset.CellSize,5);
     %newSubset=newSubset(newSubset.CellSize>prctile_threshold,:);
+    
+    % debug
+    %segmentation_color_overlay(cyto, cyto_seeds, labelled_cyto);
 
-    if height(newSubset) == 0
+    if height(imageSubset) == 0
         warning('Warning: thresholds removed all cells')
         continue
     end
-    subsetTable = [subsetTable; newSubset];
+    subsetTable = [subsetTable; imageSubset];
 end
 
 % Filter very big objects
@@ -267,13 +231,23 @@ end
 % end
 
 
+% ALL ANIMAL NAMES WITH ORDER NUMBER (for debugging)
+for n=1:size(img_names,1)
+    fprintf('%s: %s\n',int2str(n),img_names{n});
+end
+
+
+%% Load hand collected cell sizes to compare with
+animalsTable = load_animals_table_from_google_spreadsheet();
+
+
+
 %% GRAPHICS SECTION
 
 % RGB Segmentation Overlay (subsetTable)
 % for n=1
-%for n=1:size(img_names,1)
-subsetTable = noinsTable
-for n=114 % black rat - rat 4m-304.tif
+for n=1:size(img_names,1)
+%for n=114 % black rat - rat 4m-304.tif
     n
     img_subsetTable = subsetTable(find(strcmp(subsetTable.Image,img_names{n})),:);
     if height(img_subsetTable) == 0
@@ -317,21 +291,14 @@ for n=114 % black rat - rat 4m-304.tif
     
     %title([char(unique(img_subsetTable.Animal)) ' - Filename: "' img_names{n} '", Cell size: ' int2str(mean(img_subsetTable.CellSize)) 'px'],'Interpreter','none')
     
-    %export_fig(['filtered2/' char(unique(img_subsetTable.Animal)) '_' img_names{n} '_cellsize' int2str(mean(img_subsetTable.CellSize)) '.png'],'-m2')
-    export_fig('1.png','-m2')
+    export_fig(['segmentation_errors_filtered/' char(unique(img_subsetTable.Animal)) '_' img_names{n} '_cellsize' int2str(mean(img_subsetTable.CellSize)) '.png'],'-m2')
+    %export_fig('1.png','-m2')
     % print(gcf,['filtered/' char(unique(img_subsetTable.Animal)) '_' img_names{n} '_cellsize' int2str(mean(img_subsetTable.CellSize)) '.png'],'-dpng','-r300');
-    %close all
-end
-
-% ALL ANIMAL NAMES WITH ORDER NUMBER
-for n=1:size(img_names,1)
-    fprintf('%s: %s\n',int2str(n),img_names{n});
+    close all
 end
 
 
-%% Load hand collected cell sizes to compare with
-animalsTable = load_animals_table_from_google_spreadsheet();
-
+%% PLOTTING SECTION
 % Anova table and boxplot
 figure
 [p,t,stats] = anova1(subsetTable.CellSize,subsetTable.Animal);
@@ -360,35 +327,35 @@ for n=1:size(Means)
 end
 
 %% Add cell sizes computed by computer vision (CV) in this file to the animals table
-animalsTable.AcinarCV = NaN(height(animalsTable),1);
+animalsTable.HepatocyteCV = NaN(height(animalsTable),1);
 cv_animal_names = unique(subsetTable.Animal,'stable'); % animals processed by cv
 for n=1:length(cv_animal_names)
     animal_index = find(strcmp(animalsTable.ShortName,cv_animal_names{n}));
-    animalsTable.AcinarCV(animal_index) = Means(n);
+    animalsTable.HepatocyteCV(animal_index) = Means(n);
 end
 
 %% Plot cell size calculated by hand vs computer vision
-animalsSubsetTable = animalsTable(~isnan(animalsTable.Acinar) & ...
-                          ~isnan(animalsTable.AcinarCV),:);
-CellSize = animalsSubsetTable.Acinar;
-CellSizeCV = animalsSubsetTable.AcinarCV;
+animalsSubsetTable = animalsTable(~isnan(animalsTable.Hepatocyte) & ...
+                          ~isnan(animalsTable.HepatocyteCV),:);
+CellSize = animalsSubsetTable.Hepatocyte;
+CellSizeCV = animalsSubsetTable.HepatocyteCV;
 figure('Position', [400, 400, 300, 250])
 scatter(CellSizeCV,CellSize, 'ok')
-ylabel('Acinar Cell Volume Calculated by Hand','FontSize',14)
-xlabel('Acinar Cell Volume Calculated by Computer Vision','FontSize',14)
+ylabel('Hepatocyte Cell Volume Calculated by Hand','FontSize',14)
+xlabel('Hepatocyte Cell Volume Calculated by Computer Vision','FontSize',14)
 textfit(CellSizeCV,CellSize, animalsSubsetTable.ShortName, 'horizontal','left', 'vertical','bottom','FontSize',11)
 [f,fresult]=fit(CellSizeCV,CellSize,'poly1');
 hold on
 plot(CellSizeCV,f(CellSizeCV),'r')
 [r p] = corr(CellSizeCV,CellSize);
 title(['R = ' num2str(r) ', p = ' num2str(p)])
-xlim([500 4500])
-ylim([500 4500])
+% xlim([500 4500])
+% ylim([500 4500])
 
 %% Plot life span versus cell size (Calculated by Hand)
-animalsSubsetTable = animalsTable(~isnan(animalsTable.Acinar) & ...
+animalsSubsetTable = animalsTable(~isnan(animalsTable.Hepatocyte) & ...
                             ~isnan(animalsTable.Lifespan),:);
-CellSize = animalsSubsetTable.Acinar;
+CellSize = animalsSubsetTable.Hepatocyte;
 LifeSpan = animalsSubsetTable.Lifespan;
 
 [r p] = corr(CellSize, log(LifeSpan));
@@ -398,16 +365,17 @@ set(gca,'ytick',[0 3 6 12 25 50 100])
 [f,fresult]=fit(CellSize,log(LifeSpan),'poly1');
 hold on
 plot(CellSize,exp(f(CellSize)),'r')
-xlabel(['Acinar Cell Volume (um^3) Calculated by Hand'],'FontSize',14)
+xlabel(['Hepatocyte Cell Volume (um^3) Calculated by Hand'],'FontSize',14)
 ylabel('Life Span (yrs)','FontSize',14)
 title(['R = ' num2str(r) ', p = ' num2str(p)])
-textfit(CellSize,LifeSpan, animalsSubsetTable.ShortName, 'horizontal','left', 'vertical','bottom','FontSize',11)
-xlim([500 4500])
+%textfit(CellSize,LifeSpan, animalsSubsetTable.ShortName, 'horizontal','left', 'vertical','bottom','FontSize',11)
+text(CellSize,LifeSpan, animalsSubsetTable.ShortName, 'horizontal','left', 'vertical','bottom','FontSize',11)
+% xlim([400 4500])
 
 %% Plot life span versus cell size (Calculated by CV)
-animalsSubsetTable = animalsTable(~isnan(animalsTable.AcinarCV) & ...
+animalsSubsetTable = animalsTable(~isnan(animalsTable.HepatocyteCV) & ...
                             ~isnan(animalsTable.Lifespan),:);
-CellSize = animalsSubsetTable.AcinarCV;
+CellSize = animalsSubsetTable.HepatocyteCV;
 LifeSpan = animalsSubsetTable.Lifespan;
 
 [r p] = corr(CellSize, log(LifeSpan));
@@ -417,8 +385,8 @@ set(gca,'ytick',[0 3 6 12 25 50 100])
 [f,fresult]=fit(CellSize,log(LifeSpan),'poly1');
 hold on
 plot(CellSize,exp(f(CellSize)),'r')
-xlabel(['Acinar Cell Volume (um^3) Calculated by Computer Vision'],'FontSize',14)
+xlabel(['Hepatocyte Cell Volume (um^3) Calculated by Computer Vision'],'FontSize',14)
 ylabel('Life Span (yrs)','FontSize',14)
 title(['R = ' num2str(r) ', p = ' num2str(p)])
-textfit(CellSize,LifeSpan, animalsSubsetTable.ShortName, 'horizontal','left', 'vertical','bottom','FontSize',11)
-xlim([500 4500])
+text(CellSize,LifeSpan, animalsSubsetTable.ShortName, 'horizontal','left', 'vertical','bottom','FontSize',11)
+% xlim([400 4500])
