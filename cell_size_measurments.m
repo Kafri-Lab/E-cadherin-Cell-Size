@@ -201,10 +201,18 @@ for n=1:size(img_names,1)
     end
     newResults.PixelIdxList = PixelIdxList';
     
+    labelled_nuc_orig = labelled_nuc;
+    % Remove nuclei in multiple cells
+    for nuc_id=1:max(labelled_nuc(:))
+        if length(unique(labelled_cyto(labelled_nuc==nuc_id)))>1
+           labelled_nuc(labelled_nuc==nuc_id)=0;
+        end
+    end
+    
     % Count Number of Nucs in Cell
     NucCount = zeros(length(cyto_stats),1);
     for cell_id=1:max(labelled_cyto(:))
-        NucCount(cell_id) = sum(unique(labelled_nuc(labelled_cyto==cell_id))>0)
+        NucCount(cell_id) = sum(unique(labelled_nuc(labelled_cyto==cell_id))>0) % node zero here is to ignore background (ie non-nuclei pixels)
         %% OR, the above expanded with very descriptive variable names
         % single_cell = labelled_cyto==cell_id;
         % nuc_pixels_in_single_cell = labelled_nuc(single_cell);
