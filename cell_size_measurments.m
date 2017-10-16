@@ -1,13 +1,9 @@
 set(0,'DefaultFigureWindowStyle','docked')
 addpath(genpath('functions'));
-addpath('\\carbon.research.sickkids.ca\rkafri\Ceryl\MATLAB codes\Functions');
+
 ResultsTable = table(); % initialize empty table
 
 %% Load image names 
-<<<<<<< HEAD
-=======
-
->>>>>>> Ceryl
 imgs_path = '\\carbon.research.sickkids.ca\rkafri\DanielS\Images\zoo_animal\hepatocyte_images\Second Image Set\';
 %imgs_path = 'Z:\DanielS\zoo_animal_images\4th set - Miri Stolovich-Rain - animal data from Dors to Kafris lab070617\tif zoo plot\';
 img_names = dir([imgs_path '*.tif']);
@@ -74,13 +70,13 @@ for n=1:size(img_names,1)
     % Smooth
     nuc_smooth = imgaussfilt(nuc_corrected,7);
     % Threshold
-    nuc_thresh = nuc_smooth>5; figure; %imshow(nuc_thresh,[]);
+    nuc_thresh = nuc_smooth>5; %figure %imshow(nuc_thresh,[]);
     % Remove single isolated pixels
-    nuc_open = imopen(nuc_thresh,strel('disk',1)); figure; %imshow(nuc_open,[]);
+    nuc_open = imopen(nuc_thresh,strel('disk',1)); %figure; imshow(nuc_open,[]);
     % Connect remaining pixels
-    nuc_close = imclose(nuc_open,strel('disk',6)); figure; %imshow(nuc_close,[]);
+    nuc_close = imclose(nuc_open,strel('disk',6)); %figure; imshow(nuc_close,[]);
     % Remove smallish groups of pixels
-    nuc_open = imopen(nuc_close,strel('disk',5)); figure; %imshow(nuc_open,[]);
+    nuc_open = imopen(nuc_close,strel('disk',5)); %figure; imshow(nuc_open,[]);
     nuc_mask = nuc_open;
 
     % Find seeds
@@ -96,9 +92,9 @@ for n=1:size(img_names,1)
     nuc_min = imimposemin(-nuc_smooth2,nuc_seeds);  %imshow(nuc_min,[]);
     nuc_ws=watershed(nuc_min);
     nuc_ws = nuc_ws & nuc_mask;
-    labelled_nuc=bwlabel(nuc_ws);  %imshow(labelled_nuc,[]);
+    labelled_nuc=bwlabel(nuc_ws);  %figure; imshow(labelled_nuc,[]);
 
-    labelled_nuc = JoinCutNuclei(labelled_nuc); figure; imshow(labelled_nuc,[]);
+    labelled_nuc = JoinCutNuclei(labelled_nuc); %figure; imshow(labelled_nuc,[]);
     
     % NUC STATS
     nuc_stats=regionprops(labelled_nuc,'Area');
@@ -110,7 +106,7 @@ for n=1:size(img_names,1)
     max_nuc_size = 5000;
     too_small_or_big = min_nuc_size>nuc_size | nuc_size >max_nuc_size;
     ids = find(too_small_or_big);
-    labelled_nuc2(ismember(labelled_nuc2,ids))=0; imshow(labelled_nuc2,[]);
+    labelled_nuc2(ismember(labelled_nuc2,ids))=0; %imshow(labelled_nuc2,[]);
     labelled_nuc = labelled_nuc2;
     
     % Debug Nuc
@@ -225,6 +221,18 @@ for n=1:size(img_names,1)
         % total_non_zero_unique_pixels_values_in_single_cell_nuc = sum(non_zero_unique_pixels_values_in_single_cell_nuc);
     end
     newResults.NucCount = NucCount;
+    
+    % Normalize cell size to number of nucs in cell
+    NormCellSize = zeros(size(newResults,1),1);
+    for norm_count = 1:size(newResults,1)
+        if newResults.NucCount(norm_count)>0
+            NormCellSize(norm_count) = newResults.CellSize(norm_count)/newResults.NucCount(norm_count);
+        else
+            NormCellSize(norm_count) = nan;
+        end
+    end
+    newResults.NormCellSize = NormCellSize;
+        
     % STORE RESULTS
     ResultsTable = [ResultsTable; newResults];
 end
@@ -467,4 +475,3 @@ ylabel('Life Span (yrs)','FontSize',14)
 title(['R = ' num2str(r) ', p = ' num2str(p)])
 text(CellSize,LifeSpan, animalsSubsetTable.ShortName, 'horizontal','left', 'vertical','bottom','FontSize',11)
 % xlim([400 4500])
-
