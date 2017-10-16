@@ -1,9 +1,13 @@
 set(0,'DefaultFigureWindowStyle','docked')
 addpath(genpath('functions'));
-
+addpath('\\carbon.research.sickkids.ca\rkafri\Ceryl\MATLAB codes\Functions');
 ResultsTable = table(); % initialize empty table
 
 %% Load image names 
+<<<<<<< HEAD
+=======
+
+>>>>>>> Ceryl
 imgs_path = '\\carbon.research.sickkids.ca\rkafri\DanielS\Images\zoo_animal\hepatocyte_images\Second Image Set\';
 %imgs_path = 'Z:\DanielS\zoo_animal_images\4th set - Miri Stolovich-Rain - animal data from Dors to Kafris lab070617\tif zoo plot\';
 img_names = dir([imgs_path '*.tif']);
@@ -463,3 +467,4 @@ ylabel('Life Span (yrs)','FontSize',14)
 title(['R = ' num2str(r) ', p = ' num2str(p)])
 text(CellSize,LifeSpan, animalsSubsetTable.ShortName, 'horizontal','left', 'vertical','bottom','FontSize',11)
 % xlim([400 4500])
+
