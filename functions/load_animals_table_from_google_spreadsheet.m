@@ -15,13 +15,15 @@ function AnimalsTable = img_name_to_animal_name()
   name_map('Acinar cell volume (um^3)') = 'Acinar';
   name_map('Hepatocyte cell volume (um^3)') = 'Hepatocyte';
   name_map('Lifespan in captivity (years)') = 'Lifespan';
+  name_map('Genome size (base pairs)') = 'GenomeBasePairs';
+  name_map('Genome size (golden path length)') = 'GenomeGoldenPath';
   name_map('Weaning age (days)') = 'WeaningAge';
   name_map('Sexual maturity age (days)') = 'SexualMaturityAge';
   name_map('Birth weight (g)') = 'BirthWeight';
   name_map('Weaning weight (g)') = 'WeaningWeight';
   name_map('Sexual maturity weight (g)') = 'SexualMaturityWeight';
-  name_map('Adult weight (g)') = 'AdultWeight';
   name_map('Basal metabolic rate per body mass (W/g)') = 'MetabolicRate';
+  name_map('Adult weight (g)') = 'AdultWeight';
   name_map('Notes') = 'Notes';
   name_map('Animal picture (URL)') = 'PictureURL';
   name_map('Feeding state') = 'Feedingstate';
@@ -35,7 +37,7 @@ function AnimalsTable = img_name_to_animal_name()
   numeric_columns = {'DeathAge', 'Acinar', 'Hepatocyte', 'Lifespan', ...
                      'WeaningAge', 'SexualMaturityAge','BirthWeight', ...
                      'WeaningWeight', 'SexualMaturityWeight', 'AdultWeight', ...
-                     'MetabolicRate'};
+                     'MetabolicRate','GenomeBasePairs', 'GenomeGoldenPath'};
   for i=1:length(numeric_columns)
     temp = array2table(str2double(AnimalsTable{:,numeric_columns(i)}));
     AnimalsTable(:,numeric_columns(i)) = [];
