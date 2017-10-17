@@ -5,6 +5,7 @@ ResultsTable = table(); % initialize empty table
 
 %% Load image names 
 imgs_path = '\\carbon.research.sickkids.ca\rkafri\DanielS\Images\zoo_animal\hepatocyte_images\Second Image Set\';
+thresholded_imgs_path = '\\carbon.research.sickkids.ca\rkafri\DanielS\Images\zoo_animal\hepatocyte_images\old\Phansalkar_threshold_nuc\';
 %imgs_path = 'Z:\DanielS\zoo_animal_images\4th set - Miri Stolovich-Rain - animal data from Dors to Kafris lab070617\tif zoo plot\';
 img_names = dir([imgs_path '*.tif']);
 img_names = {img_names.name}'; 
@@ -62,56 +63,58 @@ for n=1:size(img_names,1)
  
    
     %% Nuc Segment
-    
     % Correct background brightness
     nuc_closed=imclose(nuc,strel('disk',20)); %imshow(nuc_closed,[]);
     nuc_opened=imopen(nuc_closed,strel('disk',100)); %imshow(nuc_opened,[]);
     nuc_corrected=nuc-nuc_opened; %imshow(nuc_corrected,[]);
+    
     % Smooth
     nuc_smooth = imgaussfilt(nuc_corrected,7);
+
     % Threshold
-    nuc_thresh = nuc_smooth>5; %figure %imshow(nuc_thresh,[]);
-    % Remove single isolated pixels
-    nuc_open = imopen(nuc_thresh,strel('disk',1)); %figure; imshow(nuc_open,[]);
-    % Connect remaining pixels
-    nuc_close = imclose(nuc_open,strel('disk',6)); %figure; imshow(nuc_close,[]);
-    % Remove smallish groups of pixels
-    nuc_open = imopen(nuc_close,strel('disk',5)); %figure; imshow(nuc_open,[]);
-    nuc_mask = nuc_open;
+    nuc_mask = imread([thresholded_imgs_path img_names{n} '_thresh.tif']);
+    % figure; imshow(nuc_mask,[]);
 
-    % Find seeds
-    nuc_smooth2 = imgaussfilt(nuc_smooth,5);  %imshow(nuc_smooth2,[]);
-    nuc_seeds = imregionalmax(nuc_smooth2);
+    % Find seeds (using thresh+bwdist)
+    %nuc_mask_orig = nuc_mask;
+    %nuc_mask = nuc_mask_orig;
+    nuc_mask = imclose(nuc_mask,strel('disk',5)); figure; imshow(nuc_mask,[]);
+    nuc_bwdist = bwdist(~nuc_mask); %figure; imshow(nuc_bwdist,[0 50])
+    nuc_bwdist = imgaussfilt(nuc_bwdist,8);
+    nuc_seeds = imregionalmax(nuc_bwdist);
     nuc_seeds = nuc_seeds & nuc_mask;
-    
-    % Debug nuc seeds
-    [xm,ym]=find(nuc_seeds);
-    figure; %imshow(nuc_corrected,[prctile(nuc_corrected(:),0) prctile(nuc_corrected(:),95)]); hold on; plot(ym,xm,'or','markersize',2,'markerfacecolor','r')
-    
-    % Watershed Nuc    
-    nuc_min = imimposemin(-nuc_smooth2,nuc_seeds);  %imshow(nuc_min,[]);
-    nuc_ws=watershed(nuc_min);
-    nuc_ws = nuc_ws & nuc_mask;
-    labelled_nuc=bwlabel(nuc_ws);  %figure; imshow(labelled_nuc,[]);
 
-    labelled_nuc = JoinCutNuclei(labelled_nuc); %figure; imshow(labelled_nuc,[]);
+    % Debug nuc seeds
+    %[xm,ym]=find(nuc_seeds);
+    %figure; imshow(nuc_corrected,[prctile(nuc_corrected(:),0) prctile(nuc_corrected(:),95)]); hold on; plot(ym,xm,'or','markersize',2,'markerfacecolor','r')
     
-    % NUC STATS
-    nuc_stats=regionprops(labelled_nuc,'Area');
-    nuc_size = cat(1,nuc_stats.Area);
+    % Not watershedding because it causes cut problems!
+    % Watershed Nuc
+    % nuc_min = imimposemin(-nuc_smooth2,nuc_seeds);  %imshow(nuc_min,[]);
+    % nuc_ws=watershed(nuc_min);
+    % nuc_ws = nuc_ws & nuc_mask;
+    % labelled_nuc=bwlabel(nuc_ws);  %figure; imshow(labelled_nuc,[]);
+
+    % Join Cut Nuclei
+    %labelled_nuc = JoinCutNuclei(labelled_nuc); %figure; imshow(labelled_nuc,[]);
     
-    % Remove Nucs that are too big or too small
-    labelled_nuc2 = labelled_nuc;
-    min_nuc_size = 0;
-    max_nuc_size = 5000;
-    too_small_or_big = min_nuc_size>nuc_size | nuc_size >max_nuc_size;
-    ids = find(too_small_or_big);
-    labelled_nuc2(ismember(labelled_nuc2,ids))=0; %imshow(labelled_nuc2,[]);
-    labelled_nuc = labelled_nuc2;
+    % % NUC STATS
+    % nuc_stats=regionprops(labelled_nuc,'Area');
+    % nuc_size = cat(1,nuc_stats.Area);
+    
+    % % Remove Nucs that are too big or too small
+    % labelled_nuc_orig = labelled_nuc;
+    % % labelled_nuc = labelled_nuc_orig; % to aid development
+    % min_nuc_size = 0;
+    % max_nuc_size = 5000;
+    % too_small_or_big = min_nuc_size>nuc_size | nuc_size >max_nuc_size;
+    % ids = find(too_small_or_big);
+    % labelled_nuc(ismember(labelled_nuc,ids))=0; %imshow(labelled_nuc,[]);
     
     % Debug Nuc
-    segmentation_color_overlay(nuc_corrected, nuc_seeds, labelled_nuc, labelled_nuc);
-
+    %segmentation_color_overlay(nuc_corrected, nuc_seeds, labelled_nuc, labelled_nuc);
+    %pause
+    %continue
 
     %% Cyto Section
     %%
@@ -142,7 +145,31 @@ for n=1:size(img_names,1)
     % figure('name',['boarder_cleared' img_names{n}],'NumberTitle', 'off');imshow(labelled_cyto,[]); colormap(gca, 'jet');
     
     %Debug cyto
-    segmentation_color_overlay(cyto, cyto_seeds, labelled_cyto, labelled_nuc);
+    %segmentation_color_overlay(cyto, nuc_seeds, labelled_cyto, nuc_mask);
+    
+    % Remove cells which contain no seeds
+    for cell_id=1:max(labelled_cyto(:))
+        num_seeds = sum(nuc_seeds(labelled_cyto==cell_id));
+        if num_seeds == 0
+            labelled_cyto(labelled_cyto==cell_id)=0;
+        end
+    end
+    
+    % Remove seeds without cell
+    nuc_seeds(~labelled_cyto)=0;
+    
+    % Remove nuc without cell
+    nuc_mask(~labelled_cyto)=0;
+    
+    % DEBUG
+    figure
+    subplot(1,2,1);
+    segmentation_color_overlay(cyto, nuc_seeds, labelled_cyto, nuc_mask);
+    subplot(1,2,2);
+    segmentation_color_overlay(nuc, nuc_seeds, labelled_cyto, nuc_mask);
+    export_fig(['debug/' img_names{n} '.png'],'-m2')
+    close all;
+    
 
     %%
     %% ResultsTable Section
@@ -170,7 +197,7 @@ for n=1:size(img_names,1)
 
     % Debug edge score
     % display_edge_scole_color_overlay(EdgeScore, cyto, cyto_seeds, labelled_cyto, -0.5);
-
+    
     % CYTO STATS
     cyto_stats=regionprops(labelled_cyto,'Area','Solidity','PixelIdxList');
     newResults.CellSize = cat(1,cyto_stats.Area);
@@ -201,38 +228,49 @@ for n=1:size(img_names,1)
     end
     newResults.PixelIdxList = PixelIdxList';
     
-    labelled_nuc_orig = labelled_nuc;
     % Remove nuclei in multiple cells
-    for nuc_id=1:max(labelled_nuc(:))
-        if length(unique(labelled_cyto(labelled_nuc==nuc_id)))>1
-           labelled_nuc(labelled_nuc==nuc_id)=0;
-        end
-    end
+    % labelled_nuc_orig = labelled_nuc;
+    % for nuc_id=1:max(labelled_nuc(:))
+    %     if length(unique(labelled_cyto(labelled_nuc==nuc_id)))>1
+    %        labelled_nuc(labelled_nuc==nuc_id)=0;
+    %     end
+    % end
     
-    % Count Number of Nucs in Cell
-    NucCount = zeros(length(cyto_stats),1);
+    % % Count Number of Nucs in Cell (By counting number of labels)
+    % NucCount = zeros(length(cyto_stats),1);
+    % for cell_id=1:max(labelled_cyto(:))
+    %     NucCount(cell_id) = sum(unique(labelled_nuc(labelled_cyto==cell_id))>0) % node zero here is to ignore background (ie non-nuclei pixels)
+    %     %% OR, the above expanded with very descriptive variable names
+    %     % single_cell = labelled_cyto==cell_id;
+    %     % nuc_pixels_in_single_cell = labelled_nuc(single_cell);
+    %     % unique_pixels_values_in_single_cell_nuc = unique(nuc_pixels_in_single_cell);
+    %     % non_zero_unique_pixels_values_in_single_cell_nuc = unique_pixels_values_in_single_cell_nuc>0;
+    %     % total_non_zero_unique_pixels_values_in_single_cell_nuc = sum(non_zero_unique_pixels_values_in_single_cell_nuc);
+    % end
+    % newResults.NucCount = NucCount;
+
+    % Count Number of Nucs in Cell (By counting number of seeds)
+    NucCount = zeros(max(labelled_cyto(:)),1);
     for cell_id=1:max(labelled_cyto(:))
-        NucCount(cell_id) = sum(unique(labelled_nuc(labelled_cyto==cell_id))>0) % node zero here is to ignore background (ie non-nuclei pixels)
-        %% OR, the above expanded with very descriptive variable names
-        % single_cell = labelled_cyto==cell_id;
-        % nuc_pixels_in_single_cell = labelled_nuc(single_cell);
-        % unique_pixels_values_in_single_cell_nuc = unique(nuc_pixels_in_single_cell);
-        % non_zero_unique_pixels_values_in_single_cell_nuc = unique_pixels_values_in_single_cell_nuc>0;
-        % total_non_zero_unique_pixels_values_in_single_cell_nuc = sum(non_zero_unique_pixels_values_in_single_cell_nuc);
+        NucCount(cell_id) = sum(nuc_seeds(labelled_cyto==cell_id));
     end
     newResults.NucCount = NucCount;
-    
-    % Normalize cell size to number of nucs in cell
-    NormCellSize = zeros(size(newResults,1),1);
-    for norm_count = 1:size(newResults,1)
-        if newResults.NucCount(norm_count)>0
-            NormCellSize(norm_count) = newResults.CellSize(norm_count)/newResults.NucCount(norm_count);
-        else
-            NormCellSize(norm_count) = nan;
-        end
+
+    nuc_mask = logical(nuc_mask);
+    % Measure Nuclear Area per Cell
+    NucArea = zeros(max(labelled_cyto(:)),1);
+    for cell_id=1:max(labelled_cyto(:))
+        NucArea(cell_id) = sum(logical(nuc_mask(labelled_cyto==cell_id)));
+        %figure;%nuc_in_cyto=nuc_mask;nuc_in_cyto(labelled_cyto~=cell_id)=0;imshow(nuc_in_cyto);pause
     end
-    newResults.NormCellSize = NormCellSize;
-        
+    newResults.NucArea = NucArea;
+
+    % Normalize cell size to number of nuc seeds in cell
+    newResults.NormCellSizeSeeds = newResults.CellSize./newResults.NucCount;
+
+    % Normalize cell size to area of nuc(s) in cell
+    newResults.NormCellSizeArea = newResults.CellSize./newResults.NucArea;
+
     % STORE RESULTS
     ResultsTable = [ResultsTable; newResults];
 end
@@ -246,7 +284,7 @@ load('ResultsTable.mat');
 
 
 
-% Filter by solidity, edgescore, outliers
+% Filter by solidity, edgescore
 subsetTable = table();
 for n=1:size(img_names,1)
 %for n=114 % black rat - rat 4m-304.tif
