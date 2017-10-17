@@ -2,7 +2,7 @@ set(0,'DefaultFigureWindowStyle','docked')
 addpath(genpath('functions'));
 
 ResultsTable = table(); % initialize empty table
-
+%made changes that i will delete later on
 %% Load image names 
 imgs_path = '\\carbon.research.sickkids.ca\rkafri\DanielS\Images\zoo_animal\hepatocyte_images\Second Image Set\';
 %imgs_path = 'Z:\DanielS\zoo_animal_images\4th set - Miri Stolovich-Rain - animal data from Dors to Kafris lab070617\tif zoo plot\';
