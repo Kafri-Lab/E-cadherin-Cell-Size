@@ -175,8 +175,22 @@ segmentation_color_overlay_by_size(ResultsTable,subsetTable,img_names,imgs_path)
 %% Analysis Section
 %%
 
-%% Load sizes from Yuval's team to compare with
+% Load sizes from Yuval's team to compare with
 animalsTable = load_animals_table_from_google_spreadsheet();
+
+%% Add cell sizes computed by computer vision (CV) in this file to the animals table
+% Initialize new columns
+animalsTable.HepatocyteCV = NaN(height(animalsTable),1);
+animalsTable.HepatocyteNormSeeds = NaN(height(animalsTable),1);
+animalsTable.HepatocyteNormArea = NaN(height(animalsTable),1);
+cv_animal_names = unique(subsetTable.Animal,'stable'); % animals processed by cv
+% Add data into now columns
+for n=1:length(cv_animal_names)
+    animal_index = find(strcmp(animalsTable.ShortName,cv_animal_names{n}));
+    animalsTable.HepatocyteCV(animal_index) = Median(n);
+    animalsTable.HepatocyteNormSeeds(animal_index) = MedianNormSeeds(n);
+    animalsTable.HepatocyteNormArea(animal_index) = MedianNormArea(n);
+end
 
 % % Get Just The Best Images
 % images_of_interest = {'Miri Stolovich-Rain - s10-1517600 human 17y.tif', 'Miri Stolovich-Rain - s10-1517601 human 17y.tif', 'Miri Stolovich-Rain - s10-1517603 human 17y.tif', 'Miri Stolovich-Rain - s10-1517604 human 17y.tif', 'Miri Stolovich-Rain - s10-1517605 human 17y.tif', 'Miri Stolovich-Rain - s10-1517606 human 17y.tif', 'Miri Stolovich-Rain - s10-1517607 human 17y.tif', 'Miri Stolovich-Rain - s10-1517608 human 17y.tif', 'Miri Stolovich-Rain - kangaroo liv03.tif', 'Miri Stolovich-Rain - kangaroo liv04.tif', 'Miri Stolovich-Rain - 103 mou 9m.tif', 'Miri Stolovich-Rain - 106 mou 9m.tif', 'Miri Stolovich-Rain - 206 mou 9m.tif', 'Miri Stolovich-Rain - 207 mou 9m.tif', 'Miri Stolovich-Rain - 410 mou 9m.tif', 'Miri Stolovich-Rain - 415 mou 9m.tif'};
@@ -211,6 +225,9 @@ for n=1:size(Median)
     fprintf('%4.0f: %s\n',Median(n),labels{n});
 end
 
+% average human data
+animalsSubsetTable = average_human_rows(animalsSubsetTable);
+
 %%
 %% Plotting Section
 %%
@@ -220,24 +237,10 @@ plot_boxplot(subsetTable,Median);
 plot_CellSize_manual_vs_automated(animalsTable);
 plot_CellSize_vs_LifeSpan(animalsTable, 'Hepatocyte');
 plot_CellSize_vs_LifeSpan(animalsTable, 'HepatocyteCV');
+plot_CellsSizeMeasurements_vs_LifeSpan_in_subplots(animalsTable)
 
 
-animalsSubsetTable = animalsTable(~isnan(animalsTable.Hepatocyte) & ...
-                                  ~isnan(animalsTable.HepatocyteCV) & ...
-                                  ~isnan(animalsTable.HepatocyteNormSeeds) & ...
-                                  ~isnan(animalsTable.HepatocyteNormArea)  ...
-                                 ,:);
 
 
-% average human data
-animalsSubsetTable = average_human_rows(animalsSubsetTable);
 
-% scale between 0 and 1
-animalsSubsetTableTEMP = animalsSubsetTable;
-animalsSubsetTableTEMP.Acinar = normalize0to1(animalsSubsetTableTEMP.Acinar);
-animalsSubsetTableTEMP.Hepatocyte = normalize0to1(animalsSubsetTableTEMP.Hepatocyte);
-animalsSubsetTableTEMP.HepatocyteCV = normalize0to1(animalsSubsetTableTEMP.HepatocyteCV);
-animalsSubsetTableTEMP.HepatocyteNormArea = normalize0to1(animalsSubsetTableTEMP.HepatocyteNormArea);
-animalsSubsetTableTEMP.HepatocyteNormSeeds = normalize0to1(animalsSubsetTableTEMP.HepatocyteNormSeeds);
-animalsSubsetTable = animalsSubsetTableTEMP;
 
