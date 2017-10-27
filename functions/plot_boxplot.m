@@ -1,4 +1,4 @@
-function fun(subsetTable, Median)
+function fun(subsetTable, Median, Stds, Lngth)
   figure
   bar(Median)
   labels = unique(subsetTable.Animal,'stable');

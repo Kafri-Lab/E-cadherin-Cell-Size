@@ -9,7 +9,7 @@ function [nuc_labelled, nuc_seeds] = fun(nuc, nuc_mask)
     nuc_smooth = imgaussfilt(nuc_corrected,7);
 
     % Threshold
-    nuc_mask = imread([thresholded_imgs_path img_names{n} '_thresh.tif']);
+    % nuc_mask = imread([thresholded_imgs_path img_names{n} '_thresh.tif']);
     % figure; imshow(nuc_mask,[]);
 
     % Find seeds (using thresh+bwdist)

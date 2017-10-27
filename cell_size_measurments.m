@@ -11,7 +11,7 @@ img_names = dir([imgs_path '*.tif']);
 img_names = {img_names.name}';
 
 %% Map from keywords in filenames to pretty animal names
-name_map = get_name_map()
+name_map = get_name_map();
 
 % IMAGE SEGMENTATION SECTION
 % for n=1
@@ -33,10 +33,10 @@ for n=1:size(img_names,1)
 
     %% Segment Nuc
     nuc_mask = logical(imread([thresholded_imgs_path img_names{n} '_thresh.tif'])); % load precomputed thresholded image
-    [nuc_labelled, nuc_seeds] = segment_nuc(nuc, nuc_mask)
+    [nuc_labelled, nuc_seeds] = segment_nuc(nuc, nuc_mask);
 
     %% Segment Cyto
-    [cyto_labelled, cyto_seeds] = segment_cyto(cyto)
+    [cyto_labelled, cyto_seeds] = segment_cyto(cyto);
 
     %%
     %% Error Filtering 1
@@ -69,8 +69,8 @@ for n=1:size(img_names,1)
     segmentation_color_overlay(cyto, nuc_seeds, cyto_labelled, nuc_mask);
     subplot(1,2,2);
     segmentation_color_overlay(nuc, nuc_seeds, cyto_labelled, nuc_mask);
-    export_fig(['debug/' img_names{n} '.png'],'-m2')
-    close all;
+    %export_fig(['debug/' img_names{n} '.png'],'-m2')
+    %close all;
 
     %%
     %% ResultsTable Section
@@ -80,7 +80,7 @@ for n=1:size(img_names,1)
 
     % Edge Score
     EdgeScore = calc_edge_score(cyto,cyto_labelled);
-    newResults.EdgeScore = EdgeScore
+    newResults.EdgeScore = EdgeScore;
     % Debug edge score
     % display_edge_scole_color_overlay(EdgeScore, cyto, cyto_seeds, cyto_labelled, -0.5);
     
@@ -178,6 +178,19 @@ segmentation_color_overlay_by_size(ResultsTable,subsetTable,img_names,imgs_path)
 % Load sizes from Yuval's team to compare with
 animalsTable = load_animals_table_from_google_spreadsheet();
 
+% Calc median, std, num elements
+Median = grpstats(subsetTable.CellSize,subsetTable.Animal,'median');
+Stds = grpstats(subsetTable.CellSize,subsetTable.Animal,'std');
+Lngth = grpstats(subsetTable.CellSize,subsetTable.Animal,'numel');
+MedianNormSeeds = grpstats(subsetTable.NormCellSizeSeeds,subsetTable.Animal,'median');
+StdNormSeeds = grpstats(subsetTable.NormCellSizeSeeds,subsetTable.Animal,'std');
+LngtNormSeeds = grpstats(subsetTable.NormCellSizeSeeds,subsetTable.Animal,'numel');
+MedianNormArea = grpstats(subsetTable.NormCellSizeArea,subsetTable.Animal,'median');
+StdsNormArea = grpstats(subsetTable.NormCellSizeArea,subsetTable.Animal,'std');
+LngthNormArea = grpstats(subsetTable.NormCellSizeArea,subsetTable.Animal,'numel');
+
+
+
 %% Add cell sizes computed by computer vision (CV) in this file to the animals table
 % Initialize new columns
 animalsTable.HepatocyteCV = NaN(height(animalsTable),1);
@@ -196,44 +209,20 @@ end
 % images_of_interest = {'Miri Stolovich-Rain - s10-1517600 human 17y.tif', 'Miri Stolovich-Rain - s10-1517601 human 17y.tif', 'Miri Stolovich-Rain - s10-1517603 human 17y.tif', 'Miri Stolovich-Rain - s10-1517604 human 17y.tif', 'Miri Stolovich-Rain - s10-1517605 human 17y.tif', 'Miri Stolovich-Rain - s10-1517606 human 17y.tif', 'Miri Stolovich-Rain - s10-1517607 human 17y.tif', 'Miri Stolovich-Rain - s10-1517608 human 17y.tif', 'Miri Stolovich-Rain - kangaroo liv03.tif', 'Miri Stolovich-Rain - kangaroo liv04.tif', 'Miri Stolovich-Rain - 103 mou 9m.tif', 'Miri Stolovich-Rain - 106 mou 9m.tif', 'Miri Stolovich-Rain - 206 mou 9m.tif', 'Miri Stolovich-Rain - 207 mou 9m.tif', 'Miri Stolovich-Rain - 410 mou 9m.tif', 'Miri Stolovich-Rain - 415 mou 9m.tif'};
 % subsetTable = subsetTable(ismember(subsetTable.Image,images_of_interest),:);
 
-% Bar chart
-Median = grpstats(subsetTable.CellSize,subsetTable.Animal,'median');
-Stds = grpstats(subsetTable.CellSize,subsetTable.Animal,'std');
-Lngth = grpstats(subsetTable.CellSize,subsetTable.Animal,'numel');
-MedianNormSeeds = grpstats(subsetTable.NormCellSizeSeeds,subsetTable.Animal,'median');
-StdNormSeeds = grpstats(subsetTable.NormCellSizeSeeds,subsetTable.Animal,'std');
-LngtNormSeeds = grpstats(subsetTable.NormCellSizeSeeds,subsetTable.Animal,'numel');
-MedianNormArea = grpstats(subsetTable.NormCellSizeArea,subsetTable.Animal,'median');
-StdsNormArea = grpstats(subsetTable.NormCellSizeArea,subsetTable.Animal,'std');
-LngthNormArea = grpstats(subsetTable.NormCellSizeArea,subsetTable.Animal,'numel');
-
-
-%% Add cell sizes computed by computer vision (CV) in this file to the animals table
-animalsTable.HepatocyteCV = NaN(height(animalsTable),1);
-animalsTable.HepatocyteNormSeeds = NaN(height(animalsTable),1);
-animalsTable.HepatocyteNormArea = NaN(height(animalsTable),1);
-cv_animal_names = unique(subsetTable.Animal,'stable'); % animals processed by cv
-for n=1:length(cv_animal_names)
-    animal_index = find(strcmp(animalsTable.ShortName,cv_animal_names{n}));
-    animalsTable.HepatocyteCV(animal_index) = Median(n);
-    animalsTable.HepatocyteNormSeeds(animal_index) = MedianNormSeeds(n);
-    animalsTable.HepatocyteNormArea(animal_index) = MedianNormArea(n);
-end
-
 % PRINT ANIMAL CELL SIZES
 for n=1:size(Median)
     fprintf('%4.0f: %s\n',Median(n),labels{n});
 end
 
-% average human data
-animalsSubsetTable = average_human_rows(animalsSubsetTable);
+% % average human data
+% animalsTable = average_human_rows(animalsTable);
 
 %%
 %% Plotting Section
 %%
 
 plot_anova(subsetTable);
-plot_boxplot(subsetTable,Median);
+plot_boxplot(subsetTable,Median, Stds, Lngth);
 plot_CellSize_manual_vs_automated(animalsTable);
 plot_CellSize_vs_LifeSpan(animalsTable, 'Hepatocyte');
 plot_CellSize_vs_LifeSpan(animalsTable, 'HepatocyteCV');
